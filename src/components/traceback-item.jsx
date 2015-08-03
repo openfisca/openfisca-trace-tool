@@ -78,7 +78,7 @@ export default class TracebackItem extends Component {
                 $array.map((value, idx) => (
                   <li key={idx}>
                     <samp>
-                      <Value title={`${entityKeyPlural} ${idx + 1}`} type={cellType} value={value} />
+                      <Value title={`${entityKeyPlural}[${idx}]`} type={cellType} value={value} />
                     </samp>
                     {idx < $array.size - 1 && ", "}
                   </li>
@@ -103,7 +103,7 @@ export default class TracebackItem extends Component {
                       <pre>{errorMessage}</pre>
                     </div>
                   ) : (
-                    <p>body</p>
+                    <pre>{JSON.stringify($variableData, null, 2)}</pre>
                   )
                 //     <div style={{position: "absolute", right: 7, top: 5}}>
                 //       <a

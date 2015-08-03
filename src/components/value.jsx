@@ -39,9 +39,18 @@ export default class Value extends Component {
     if (value === "") {
       return "\"\""
     } else {
-      var formattedValue = value.toLocaleString("fr")
-      if (type === "monetary") {
-        formattedValue += " €"
+      let formattedValue
+      if (typeof value === "number") {
+        if (value === 0) {
+          formattedValue = "0"
+        } else {
+          formattedValue = value.toFixed(2)
+        }
+        if (type === "monetary") {
+          formattedValue += " €"
+        }
+      } else {
+        formattedValue = value.toString()
       }
       return formattedValue
     }

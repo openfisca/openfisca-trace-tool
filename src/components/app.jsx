@@ -33,6 +33,22 @@ import TracebacksList from "./tracebacks-list"
 import webservices from "../webservices"
 
 
+// import {addons} from "react/addons"
+// const {Perf} = addons
+// function setStatePerf(obj, cb) {
+//   Perf.start()
+//   return this.setState(obj, () => {
+//     if (cb) {
+//       cb()
+//     }
+//     Perf.stop()
+//     Perf.printInclusive()
+//     Perf.printExclusive()
+//     Perf.printWasted()
+//   })
+// }
+
+
 export default class App extends Component {
   calculate = () => {
     const {simulationData} = this.state

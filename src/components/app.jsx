@@ -22,294 +22,211 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-import {addons, Component} from "react/addons";
+import {Component} from "react"
+import immutable from "immutable"
 
-import webservices from "../webservices";
-
-const {update} = addons;
+import config from "../config"
+import Layout from "./layout"
+import model from "../model"
+import SimulationEditor from "./simulation-editor"
+import TracebacksList from "./tracebacks-list"
+import webservices from "../webservices"
 
 
 export default class App extends Component {
-  calculate() {
-    var onError = function(errorMessage) {
-      this.setState({
-        extrapolatedConsumerTracebacksByVariableId: null,
-        simulationError: errorMessage,
-        simulationInProgress: false,
-        tracebacks: null,
-        variableByName: null,
-      });
-      window.tracebacks = null; // DEBUG
-    }.bind(this);
-    var onSuccess = function(data) {
-      var firstScenarioTracebacks = data.tracebacks["0"],
-        firstSimulationVariables = data.variables["0"];
-      window.tracebacks = firstScenarioTracebacks; // DEBUG
-      this.setState({
-        extrapolatedConsumerTracebacksByVariableId: this.findExtrapolatedConsumerTracebacksByVariableId(
-          firstScenarioTracebacks
-        ),
-        simulationError: null,
-        simulationInProgress: false,
-        tracebacks: firstScenarioTracebacks,
-        variableByName: firstSimulationVariables,
-      });
-    }.bind(this);
-    this.setState({simulationInProgress: true}, function() {
-      calculate(this.props.apiUrl, this.state.simulationJson, onSuccess, onError);
-    });
-  }
-  constructor() {
-    this.state = {
-      showDefaultFormulas: false,
-      simulationError: null,
-      simulationInProgress: false,
-      simulationJson: null,
-      toggleStatusByVariableId: {},
-      tracebacks: null,
-      variableByName: null,
-      variableHolderByName: {},
-      variableHolderErrorByName: {},
-    };
-    super();
-  }
-  fetchField(variableName, baseReforms) {
-    var onError = function(errorMessage) {
-      var variableHolderChangeset = {};
-      variableHolderChangeset[variableName] = null;
-      var newVariableHolderByName = update(this.state.variableHolderByName, {$merge: variableHolderChangeset});
-      var variableHolderErrorChangeset = {};
-      variableHolderErrorChangeset[variableName] = errorMessage;
-      var newVariableHolderErrorByName = update(
-        this.state.variableHolderErrorByName,
-        {$merge: variableHolderErrorChangeset}
-      );
-      this.setState({
-        variableHolderByName: newVariableHolderByName,
-        variableHolderErrorByName: newVariableHolderErrorByName,
-      });
-    }.bind(this);
-    var onSuccess = function(data) {
-      var variableHolderChangeset = {};
-      variableHolderChangeset[variableName] = data.value;
-      var newVariableHolderByName = update(this.state.variableHolderByName, {$merge: variableHolderChangeset});
-      var variableHolderErrorChangeset = {};
-      variableHolderErrorChangeset[variableName] = null;
-      var newVariableHolderErrorByName = update(
-        this.state.variableHolderErrorByName,
-        {$merge: variableHolderErrorChangeset}
-      );
-      this.setState({
-        variableHolderByName: newVariableHolderByName,
-        variableHolderErrorByName: newVariableHolderErrorByName,
-      });
-    }.bind(this);
-    webservices.fetchField(config.apiBaseUrl, variableName, baseReforms, onSuccess, onError);
-  }
-  findExtrapolatedConsumerTracebacksByVariableId(tracebacks) {
-    var extrapolatedConsumerTracebacksByVariableId = {};
-    tracebacks.forEach(function(traceback) {
-      if (traceback.used_periods) {
-        var extrapolatedConsumerTracebacks = tracebacks.filter(function(traceback1) {
-          return traceback.name === traceback1.name && traceback1.used_periods &&
-            _.contains(traceback1.used_periods, traceback.period);
-        });
-        var variableId = buildVariableId(traceback.name, traceback.period);
-        extrapolatedConsumerTracebacksByVariableId[variableId] = extrapolatedConsumerTracebacks;
+  calculate = () => {
+    const {simulationData} = this.state
+    this.setState({isSimulationInProgress: true}, async () => {
+      let data
+      try {
+        // TODO Allow api_url GET param
+        data = await model.calculate(config.apiBaseUrl, simulationData)
+      } catch (error) {
+        let simulationErrorMessage = error.data ? JSON.stringify(error.data, null, 2) : error.message
+        this.setState({
+          $arrayByVariableNameByScenarioIdx: null,
+          $tracebacksByScenarioIdx: null,
+          isSimulationInProgress: false,
+          simulationErrorMessage,
+        })
+        return
       }
-    });
-    return extrapolatedConsumerTracebacksByVariableId;
+      this.setState({
+        $arrayByVariableNameByScenarioIdx: immutable.fromJS(data.variables),
+        $tracebacksByScenarioIdx: immutable.fromJS(data.tracebacks),
+        isSimulationInProgress: false,
+        simulationErrorMessage: null,
+      })
+    })
   }
-  getSimulationJson(simulationText) {
-    var simulationJson;
+  constructor(props) {
+    super(props)
+    this.state = {
+      $arrayByVariableNameByScenarioIdx: null,
+      $isOpenedById: new immutable.Map(),
+      $tracebacksByScenarioIdx: null,
+      $variableDataByName: new immutable.Map(),
+      $variableErrorMessageByName: new immutable.Map(),
+      isSimulationEditorValid: true,
+      isSimulationInProgress: false,
+      selectedScenarioIdx: 0,
+      simulationData: model.defaultSimulationData,
+      simulationErrorMessage: null,
+    }
+  }
+  fetchVariable = async (name) => {
+    const {$variableDataByName, $variableErrorMessageByName} = this.state
+    let data
     try {
-        simulationJson = JSON.parse(simulationText);
+      // TODO Allow api_url GET param
+      data = await webservices.fetchVariable(config.apiBaseUrl, name)
     } catch (error) {
-        this.setState({simulationError: "JSON parse error: " + error.message});
-        return;
+      let errorMessage = error.data ? JSON.stringify(error.data, null, 2) : error.message
+      this.setState({
+        $variableDataByName: $variableDataByName.set(name, null),
+        $variableErrorMessageByName: $variableErrorMessageByName.set(name, errorMessage),
+      })
+      return
     }
-    simulationJson.trace = true;
-    return simulationJson;
-  }
-  handleShowDefaultFormulasChange(event) {
-    this.setState({showDefaultFormulas: event.target.checked});
-  }
-  handleSimulationFormSubmit(event) {
-    event.preventDefault();
-    this.setState({simulationJson: this.getSimulationJson(this.state.simulationText)}, function() {
-      this.calculate();
-    });
-  }
-  handleSimulationTextChange(event) {
     this.setState({
-      simulationError: null,
-      simulationText: event.target.value,
-      tracebacks: null,
-      variableByName: null,
-      variableHolderByName: {},
-      variableHolderErrorByName: {},
-    }, function() {
-      // Fetch holders for previously opened variables.
-      _.map(this.state.toggleStatusByVariableId, function(variableInfos) {
-        if ( ! (variableInfos.name in this.state.variableHolderByName)) {
-          this.handleVariablePanelOpen(variableInfos.name, variableInfos.period);
-        }
-      }.bind(this));
-    });
+      $variableDataByName: $variableDataByName.set(name, data.variables[0]),
+      $variableErrorMessageByName: $variableErrorMessageByName.set(name, null),
+    })
   }
-  handleVariablePanelOpen(variableName, variablePeriod) {
-    this.handleVariablePanelToggle(variableName, variablePeriod, true);
-  }
-  handleVariablePanelToggle(variableName, variablePeriod, forceValue) {
-    var variableId = buildVariableId(variableName, variablePeriod);
-    var toggleStatusByVariableIdChangeset = {};
-    toggleStatusByVariableIdChangeset[variableId] = {
-      isOpened: _.isUndefined(forceValue) ? ! this.state.toggleStatusByVariableId[variableId] : forceValue,
-      name: variableName,
-      period: variablePeriod,
-    };
-    var newToggleStatusByVariableId = update(
-      this.state.toggleStatusByVariableId,
-      {$merge: toggleStatusByVariableIdChangeset}
-    );
-    this.setState({toggleStatusByVariableId: newToggleStatusByVariableId});
-    if (newToggleStatusByVariableId && ! (variableName in this.state.variableHolderByName)) {
-      this.fetchField(variableName, this.state.simulationJson.base_reforms);
+  handleSelectedScenarioIdxChange = (event) => {
+    const selectedScenarioNumber = event.target.valueAsNumber
+    const {simulationData} = this.state
+    const nbScenarios = simulationData && simulationData.scenarios ?
+      simulationData.scenarios.length :
+      null
+    if (selectedScenarioNumber >= 0 && (nbScenarios === null || selectedScenarioNumber <= nbScenarios)) {
+      this.setState({selectedScenarioIdx: selectedScenarioNumber - 1})
     }
   }
-  render() {
+  handleSimulationEditorChange = (simulationData) => {
+    const {selectedScenarioIdx} = this.state
+    const nbScenarios = simulationData && simulationData.scenarios ?
+      simulationData.scenarios.length :
+      null
+    let newSelectedScenarioIdx = selectedScenarioIdx
+    if (nbScenarios === null) {
+      newSelectedScenarioIdx = null
+    } else if (selectedScenarioIdx + 1 > nbScenarios) {
+      newSelectedScenarioIdx = 0
+    }
+    this.setState({
+      isSimulationEditorValid: true,
+      selectedScenarioIdx: newSelectedScenarioIdx,
+      simulationData,
+    })
+  }
+  handleSimulationEditorJsonError = () => {
+    this.setState({isSimulationEditorValid: false})
+  }
+  handleSimulationFormSubmit = (event) => {
+    event.preventDefault()
+    this.calculate()
+  }
+  handleTracebackItemToggle = ($traceback, id, isOpened) => {
+    const {$isOpenedById, $variableDataByName} = this.state
+    const name = $traceback.get("name")
+    if (isOpened && !$variableDataByName.includes(name)) {
+      this.fetchVariable(name)
+    }
+    this.setState({$isOpenedById: $isOpenedById.set(id, isOpened)})
+  }
+  render = () => {
+    const {
+      $arrayByVariableNameByScenarioIdx,
+      $isOpenedById,
+      $tracebacksByScenarioIdx,
+      $variableDataByName,
+      $variableErrorMessageByName,
+      isSimulationEditorValid,
+      isSimulationInProgress,
+      selectedScenarioIdx,
+      simulationData,
+      simulationErrorMessage,
+    } = this.state
+    const $selectedScenarioarrayByVariableName = $arrayByVariableNameByScenarioIdx &&
+      $arrayByVariableNameByScenarioIdx.get(selectedScenarioIdx)
+    const $selectedScenarioTracebacks = $tracebacksByScenarioIdx && $tracebacksByScenarioIdx.get(selectedScenarioIdx)
+    const nbScenarios = simulationData && simulationData.scenarios ?
+      simulationData.scenarios.length :
+      null
     return (
-      <div>
-        {this.renderSimulationForm()}
-        {
-          this.state.simulationError ? (
-            <div className="alert alert-danger">
-              <p>
-                <strong>Erreur à l"appel de l"API calculate !</strong>
-              </p>
-              <pre style={{background: "transparent", border: 0}}>{this.state.simulationError}</pre>
-            </div>
-          ) : (
-            this.state.simulationInProgress ? (
-              <div className="alert alert-info">
-                <p>Simulation en cours...</p>
+      <Layout>
+        <div>
+          <p>
+            Cet outil présente les formules socio-fiscales intervenant dans le calcul d'un cas type,
+            des valeurs de leurs paramètres et de leur résultat, dans l'ordre chronologique.
+          </p>
+          <form className="form" onSubmit={this.handleSimulationFormSubmit} role="form" style={{marginBottom: "1em"}}>
+            <h4>Cas type et données d'entrée</h4>
+            <SimulationEditor
+              data={simulationData}
+              isValid={isSimulationEditorValid}
+              onChange={this.handleSimulationEditorChange}
+              onJsonError={this.handleSimulationEditorJsonError}
+            />
+            <button
+              accessKey="s"
+              className="btn btn-primary"
+              disabled={isSimulationInProgress || !isSimulationEditorValid}
+              style={{marginTop: "1em"}}
+              type="submit"
+            >
+              {isSimulationInProgress ? "Simulation en cours…" : "Simuler"}
+            </button>
+            {
+              nbScenarios > 1 && (
+                <div>
+                  <label htmlFor="selectedScenarioIdx">
+                    Scénario numéro
+                  </label>
+                  <input
+                    id="selectedScenarioIdx"
+                    max={nbScenarios}
+                    min={1}
+                    onChange={this.handleSelectedScenarioIdxChange}
+                    type="number"
+                    value={selectedScenarioIdx + 1}
+                  />
+                </div>
+              )
+            }
+          </form>
+          {
+            simulationErrorMessage ? (
+              <div className="alert alert-danger">
+                <p>
+                  <strong>Erreur lors de l'appel de l'API !</strong>
+                </p>
+                <pre>{simulationErrorMessage}</pre>
               </div>
             ) : (
-              this.state.tracebacks && (
+              $selectedScenarioTracebacks && $selectedScenarioarrayByVariableName && (
                 <div>
-                  {this.renderVariablesPanels()}
-                  <p>{this.state.tracebacks.length + " formules et variables au total"}</p>
+                  <p>
+                    {
+                      `Cette simulation a fait intervenir ${$selectedScenarioTracebacks.size}
+                      variables d'entrée ou calculées.`
+                    }
+                  </p>
+                  <TracebacksList
+                    $arrayByVariableName={$selectedScenarioarrayByVariableName}
+                    $isOpenedById={$isOpenedById}
+                    $tracebacks={$selectedScenarioTracebacks}
+                    $variableDataByName={$variableDataByName}
+                    $variableErrorMessageByName={$variableErrorMessageByName}
+                    onToggle={this.handleTracebackItemToggle}
+                  />
                 </div>
               )
             )
-          )
-        }
-      </div>
-    );
-  }
-  renderSimulationForm() {
-    var permaLinkParameters = getQueryParameters();
-    permaLinkParameters.simulation = this.state.simulationJson;
-    var permaLinkHref = "?" + $.param(permaLinkParameters);
-    return (
-      <form className="form" role="form" onSubmit={this.handleSimulationFormSubmit}>
-        <div className="panel panel-default">
-          <div className="panel-heading" role="tab" id="collapseSimulationTextHeading">
-            <h4 className="panel-title">
-              <a
-                aria-controls="collapseSimulationText"
-                aria-expanded="true"
-                data-toggle="collapse"
-                href="#collapseSimulationText">
-                Appel de la simulation
-              </a>
-            </h4>
-          </div>
-          <div
-            aria-expanded="true"
-            aria-labelledby="collapseSimulationTextHeading"
-            className="panel-collapse collapse"
-            id="collapseSimulationText"
-            role="tabpanel">
-            <div className="panel-body">
-              <p>
-                {"URL de l\"API de simulation : " + this.props.apiUrl + "api/1/calculate "}
-                (<a href={this.props.apiDocUrl + "#calculate"} rel="external" target="_blank">documentation</a>)
-              </p>
-              <p>Paramètre l"URL <code>api_url</code> (exemple : http://www.openfisca.fr/outils/trace?api_url=http://localhost:2000/)</p>
-              <AutoSizedTextArea
-                disabled={this.state.simulationInProgress}
-                onChange={this.handleSimulationTextChange}
-                value={this.state.simulationText}
-              />
-              <button className="btn btn-primary" type="submit">Simuler</button>
-              <a href={permaLinkHref} rel="external" style={{marginLeft: "1em"}} target="_blank">Lien permanent</a>
-            </div>
-          </div>
+          }
         </div>
-        <div className="checkbox">
-          <label>
-            <input
-              onChange={this.handleShowDefaultFormulasChange}
-              checked={this.props.showDefaultFormulas}
-              type="checkbox"
-            />
-            Afficher aussi les formules appelées avec toutes les valeurs par défaut
-          </label>
-        </div>
-      </form>
-    );
-  }
-  renderVariablesPanels() {
-    var scenario = this.state.simulationJson.scenarios[0];
-    var scenarioPeriod = normalizePeriod(scenario.period || scenario.year.toString()),
-      simulationVariables = this.state.simulationJson.variables;
-    return (
-      this.state.tracebacks.map(function(traceback, idx) {
-        if (idx < this.state.tracebacks.length - 1 && traceback.default_input_variables && ! this.state.showDefaultFormulas) {
-          return null;
-        }
-        var variable = this.state.variableByName[traceback.name];
-        var variableId = buildVariableId(traceback.name, traceback.period);
-        var values = _.isArray(variable) ? variable : variable[traceback.period];
-        var toggleStatus = this.state.toggleStatusByVariableId[variableId];
-        var isOpened = toggleStatus && toggleStatus.isOpened;
-        return (
-          <VariablePanel
-            cellType={traceback.cell_type}
-            computedConsumerTracebacks={
-              isOpened ? findConsumerTracebacks(this.state.tracebacks, traceback.name, traceback.period) : null
-            }
-            default={traceback.default}
-            entity={traceback.entity}
-            extrapolatedConsumerTracebacks={
-              this.state.extrapolatedConsumerTracebacksByVariableId &&
-                this.state.extrapolatedConsumerTracebacksByVariableId[variableId]
-            }
-            hasAllDefaultArguments={traceback.default_input_variables}
-            holder={this.state.variableHolderByName[traceback.name]}
-            holderError={this.state.variableHolderErrorByName[traceback.name]}
-            isComputed={traceback.is_computed}
-            inputVariables={
-              traceback.input_variables && traceback.input_variables.length ? traceback.input_variables : null
-            }
-            isOpened={isOpened}
-            key={idx}
-            label={traceback.label}
-            name={traceback.name}
-            onOpen={this.handleVariablePanelOpen}
-            onToggle={this.handleVariablePanelToggle}
-            period={traceback.period === null ? null : normalizePeriod(traceback.period)}
-            scenarioPeriod={scenarioPeriod}
-            showDefaultFormulas={this.state.showDefaultFormulas}
-            simulationVariables={simulationVariables}
-            tracebacks={this.state.tracebacks}
-            usedPeriods={traceback.used_periods}
-            values={values}
-            variableByName={this.state.variableByName}
-          />
-        );
-      }.bind(this))
-    );
+      </Layout>
+    )
   }
 }

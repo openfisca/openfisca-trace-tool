@@ -22,35 +22,28 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-import {Component, PropTypes} from "react"
+import {addons} from "react/addons"
 
-import {PureComponent} from "../decorators"
+import ImmutableRenderMixin from "react-immutable-render-mixin"
 
 
-@PureComponent
-export default class Value extends Component {
-  static propTypes = {
-    title: PropTypes.string,
-    type: PropTypes.string,
-    value: PropTypes.any.isRequired,
+const {PureRenderMixin} = addons
+
+
+export function ImmutablePureComponent(component) {
+  component.prototype.shouldComponentUpdate = function(nextProps, nextState) {
+    return ImmutableRenderMixin.shouldComponentUpdate.call(this, nextProps, nextState)
   }
-  format = () => {
-    const {type, value} = this.props
-    if (value === "") {
-      return "\"\""
-    } else {
-      var formattedValue = value.toLocaleString("fr")
-      if (type === "monetary") {
-        formattedValue += " €"
-      }
-      return formattedValue
-    }
+}
+
+
+export function PureComponent(component) {
+  component.prototype.shouldComponentUpdate = function(nextProps, nextState) {
+    return PureRenderMixin.shouldComponentUpdate.call(this, nextProps, nextState)
   }
-  render = () => {
-    const {title} = this.props
-    const formattedValue = this.format()
-    return (
-      <span title={title}>{formattedValue}</span>
-    )
-  }
+}
+
+
+export function StaticComponent(component) {
+  component.prototype.shouldComponentUpdate = () => false
 }

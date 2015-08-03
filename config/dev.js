@@ -22,35 +22,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-import {Component, PropTypes} from "react"
+// App config the for development environment.
+// Do not require this directly. Use ./src/config instead.
 
-import {PureComponent} from "../decorators"
+
+const WEBPACK_HOST = process.env.HOST || "localhost"
 
 
-@PureComponent
-export default class Value extends Component {
-  static propTypes = {
-    title: PropTypes.string,
-    type: PropTypes.string,
-    value: PropTypes.any.isRequired,
-  }
-  format = () => {
-    const {type, value} = this.props
-    if (value === "") {
-      return "\"\""
-    } else {
-      var formattedValue = value.toLocaleString("fr")
-      if (type === "monetary") {
-        formattedValue += " €"
-      }
-      return formattedValue
-    }
-  }
-  render = () => {
-    const {title} = this.props
-    const formattedValue = this.format()
-    return (
-      <span title={title}>{formattedValue}</span>
-    )
-  }
+export default {
+  apiBaseUrl: `http://${WEBPACK_HOST}:2000`,
+  websiteUrl: `http://${WEBPACK_HOST}:2010/`,
 }

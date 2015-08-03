@@ -22,93 +22,78 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-const debug = require("debug")("app:webservices");
+const debug = require("debug")("app:webservices")
 
 
 // Fetch polyfill
 
 function loadFetch() {
-  if (window.fetch) {
-    return window.fetch;
-  } else {
-    require("whatwg-fetch");
-    return window.fetch;
+  if (!window.fetch) {
+    require("whatwg-fetch")
   }
+  return window.fetch
 }
-var fetch = loadFetch();
+let fetch = loadFetch()
 
 
 // Generic fetch functions
 
-function fetchJSON(url, options) {
-  return loggedFetch(url, options).then(json);
+async function checkStatus(response) {
+  if (response.status >= 200 && response.status < 300) {
+    return response
+  } else {
+    const responseData = await response.json()
+    const message = responseData.error && responseData.error.message ? responseData.error.message : response.statusText
+    let error = new Error(message)
+    error.response = response
+    error.responseData = responseData
+    error.data = responseData.error
+    throw error
+  }
 }
 
 
-function json(response) {
-  return response.json();
+function fetchJson(url, options) {
+  return loggedFetch(url, options)
+    .then(checkStatus)
+    .then(parseJson)
 }
 
 
 function loggedFetch(url, ...args) {
-  debug("About to fetch URL", url);
-  return fetch(url, ...args);
+  debug("About to fetch URL", url)
+  return fetch(url, ...args)
+}
+
+
+function parseJson(response) {
+  return response.json()
 }
 
 
 // API fetch functions
 
-function calculate(apiBaseUrl, simulationJson, onSuccess, onError) {
-  // TODO
-  const calculateUrl = apiBaseUrl + "/api/1/calculate";
-  $.ajax(calculateUrl, {
-    contentType: "application/json",
-    data: JSON.stringify(simulationJson),
-    dataType: "json",
-    type: "POST",
-    xhrFields: {
-      withCredentials: true
-    }
-  })
-  .done(function (data/*, textStatus, jqXHR*/) {
-    onSuccess(data);
-  })
-  .fail(function(jqXHR, textStatus, errorThrown) {
-    onError(
-      errorThrown && jqXHR.responseText ?
-        errorThrown + ": " + jqXHR.responseText :
-        errorThrown || jqXHR.responseText || "unknown"
-    );
-  });
+function calculate(apiBaseUrl, simulationData) {
+  return fetchJson("http://localhost:8080/calculate-result.json")
+  // return fetchJson(
+  //   apiBaseUrl + "/api/1/calculate",
+  //   {
+  //     body: JSON.stringify(simulationData),
+  //     credentials: "same-origin",
+  //     headers: {
+  //       "Accept": "application/json",
+  //       "Content-Type": "application/json",
+  //     },
+  //     method: "post",
+  //   }
+  // )
 }
 
 
-function fetchField(apiBaseUrl, name, baseReforms, onSuccess, onError) {
-  // TODO
-  const fieldUrl = apiBaseUrl + "/api/1/field";
-  $.ajax(fieldUrl, {
-    data: {
-      reform: baseReforms,
-      variable: name,
-    },
-    dataType: "json",
-    traditional: true,
-    type: "GET",
-    xhrFields: {
-      withCredentials: true,
-    },
-  })
-  .done(function(data/*, textStatus, jqXHR*/) {
-    onSuccess(data);
-  })
-  .fail(function(jqXHR, textStatus, errorThrown) {
-    onError(
-      errorThrown && jqXHR.responseText ?
-        errorThrown + ": " + jqXHR.responseText :
-        errorThrown || jqXHR.responseText || "unknown"
-    );
-  });
+function fetchVariable(apiBaseUrl, name) {
+  // TODO update to variables endpoint
+  return fetchJson(apiBaseUrl + "/api/1/variables?name=" + name)
 }
 
 
-export default {fetchField};
+export default {calculate, fetchVariable}

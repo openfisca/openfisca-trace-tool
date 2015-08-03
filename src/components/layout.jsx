@@ -24,32 +24,27 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import {Component, PropTypes} from "react"
 
-import model from "../model"
+import BreadCrumb from "./breadcrumb"
+import NavBar from "./navbar"
 
 
-export default class VariableLink extends Component {
+export default class Layout extends Component {
   static propTypes = {
-    children: PropTypes.string.isRequired,
-    name: PropTypes.string.isRequired,
-    onOpen: PropTypes.func.isRequired,
-    period: PropTypes.string,
-  }
-  handleClick = (event) => {
-    console.log("TODO VariableLink.handleClick", event)
-    // event.preventDefault()
-    // this.props.onOpen(this.props.name, this.props.period)
-    // var $link = $(event.target.hash)
-    // if ($link.length) {
-    //   location.hash = event.target.hash
-    //   $(document.body).scrollTop($link.offset().top)
-    // } else {
-    //   console.error("This link has no target: " + event.target.hash)
-    // }
+    children: PropTypes.node.isRequired,
   }
   render = () => {
-    var variableId = model.buildVariableId(this.props.name, this.props.period)
     return (
-      <a href={"#" + variableId} onClick={this.handleClick}>{this.props.children}</a>
+      <div>
+        <a className="sr-only" href="#content">Sauter au contenu principal</a>
+        <NavBar />
+        <div className="container" id="content" style={{marginBottom: 100}}>
+          <BreadCrumb />
+          <div className="page-header">
+            <h1>Outil de trace</h1>
+          </div>
+          {this.props.children}
+        </div>
+      </div>
     )
   }
 }

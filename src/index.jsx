@@ -24,16 +24,17 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 // Polyfills, loaded at the very first.
 
-require("babel-core/polyfill");
+require("babel-core/polyfill")
 
-import hljs from "highlight.js/lib/highlight";
-hljs.registerLanguage("python", require("highlight.js/lib/languages/python"));
-
-
-import React from "react";
-
-import App from "./components/app";
+import hljs from "highlight.js/lib/highlight"
+hljs.registerLanguage("python", require("highlight.js/lib/languages/python"))
 
 
-const appMountNode = document.getElementById("app-mount-node");
-React.render(<App />, appMountNode);
+import React from "react"
+
+import App from "./components/app"
+
+
+const appMountNode = document.getElementById("app-mount-node")
+
+React.render(<App />, appMountNode)

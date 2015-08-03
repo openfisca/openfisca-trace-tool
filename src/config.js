@@ -22,35 +22,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-import {Component, PropTypes} from "react"
+// Load different configs for production or development
 
-import {PureComponent} from "../decorators"
+let configFile = "dev.js"
 
-
-@PureComponent
-export default class Value extends Component {
-  static propTypes = {
-    title: PropTypes.string,
-    type: PropTypes.string,
-    value: PropTypes.any.isRequired,
-  }
-  format = () => {
-    const {type, value} = this.props
-    if (value === "") {
-      return "\"\""
-    } else {
-      var formattedValue = value.toLocaleString("fr")
-      if (type === "monetary") {
-        formattedValue += " €"
-      }
-      return formattedValue
-    }
-  }
-  render = () => {
-    const {title} = this.props
-    const formattedValue = this.format()
-    return (
-      <span title={title}>{formattedValue}</span>
-    )
-  }
+if (process.env.NODE_ENV === "production") {
+  configFile = "prod.js"
 }
+
+const config = require("../config/" + configFile)
+
+
+export default config

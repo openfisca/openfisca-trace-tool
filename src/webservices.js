@@ -38,6 +38,9 @@ let fetch = loadFetch()
 
 // Generic fetch functions
 
+let dataByUrl = new Map()
+
+
 async function checkStatus(response) {
   if (response.status >= 200 && response.status < 300) {
     return response
@@ -49,6 +52,18 @@ async function checkStatus(response) {
     error.responseData = responseData
     error.data = responseData.error
     throw error
+  }
+}
+
+
+export async function fetchCachedJson(url, options) {
+  if (dataByUrl.has(url)) {
+    debug("Found data in cache for URL", url)
+    return dataByUrl.get(url)
+  } else {
+    let data = await fetchJson(url, options)
+    dataByUrl.set(url, data)
+    return data
   }
 }
 
@@ -74,25 +89,24 @@ function parseJson(response) {
 // API fetch functions
 
 function calculate(apiBaseUrl, simulationData) {
-  return fetchJson("http://localhost:8080/calculate-result.json")
-  // return fetchJson(
-  //   apiBaseUrl + "/api/1/calculate",
-  //   {
-  //     body: JSON.stringify(simulationData),
-  //     credentials: "same-origin",
-  //     headers: {
-  //       "Accept": "application/json",
-  //       "Content-Type": "application/json",
-  //     },
-  //     method: "post",
-  //   }
-  // )
+  return fetchJson(
+    apiBaseUrl + "/api/1/calculate",
+    {
+      body: JSON.stringify(simulationData),
+      credentials: "same-origin",
+      headers: {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+      },
+      method: "post",
+    }
+  )
 }
 
 
 function fetchVariable(apiBaseUrl, name) {
   // TODO update to variables endpoint
-  return fetchJson(apiBaseUrl + "/api/1/variables?name=" + name)
+  return fetchCachedJson(apiBaseUrl + "/api/1/variables?name=" + name)
 }
 
 

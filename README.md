@@ -14,3 +14,7 @@ To launch the web server:
     npm start
 
 Then open http://localhost:2040/
+
+## Code conventions
+
+Identifiers of immutable variables or React components props start by `$`.

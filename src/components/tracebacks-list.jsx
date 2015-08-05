@@ -25,7 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import {Component, PropTypes} from "react"
 
 import {ImmutablePureComponent} from "../decorators"
-import model from "../model"
+import * as model from "../model"
 import TracebackItem from "./traceback-item"
 
 
@@ -34,23 +34,33 @@ export default class TracebacksList extends Component {
   static propTypes = {
     // TODO use immutable arrayOf(shape)
     $arrayByVariableName: PropTypes.any.isRequired,
-    $isOpenedById: PropTypes.any.isRequired,
+    $consumerTracebacksByVariableId: PropTypes.any.isRequired,
+    $isOpenedByVariableId: PropTypes.any.isRequired,
+    $requestedVariables: PropTypes.any.isRequired,
+    $selectedScenarioData: PropTypes.any.isRequired,
+    $tracebacks: PropTypes.any.isRequired,
     $variableDataByName: PropTypes.any.isRequired,
     $variableErrorMessageByName: PropTypes.any.isRequired,
-    $tracebacks: PropTypes.any.isRequired,
+    countryPackageGitHeadSha: PropTypes.string,
     onToggle: PropTypes.func.isRequired,
   }
-  render = () => {
+  render() {
     const {
       $arrayByVariableName,
-      $isOpenedById,
+      $consumerTracebacksByVariableId,
+      $isOpenedByVariableId,
+      $requestedVariables,
+      $selectedScenarioData,
       $tracebacks,
       $variableDataByName,
       $variableErrorMessageByName,
+      countryPackageGitHeadSha,
       onToggle,
     } = this.props
-    const tracebacksLimit = 500
-    const $reverseTracebacks = $tracebacks.reverse().slice(0, tracebacksLimit)
+    const tracebacksLimit = null
+    // const tracebacksLimit = 50
+    // const $reverseTracebacks = $tracebacks.reverse().slice(0, tracebacksLimit)
+    const $reverseTracebacks = $tracebacks.reverse()
     return (
       <ul className="list-unstyled">
         {
@@ -61,18 +71,23 @@ export default class TracebacksList extends Component {
             const $array = Array.isArray($arrayByPeriodOrArray.toJS()) ?
               $arrayByPeriodOrArray :
               $arrayByPeriodOrArray.get(period)
-            const $variableData = $variableDataByName.get(name)
             const id = model.buildVariableId(name, period)
+            const $consumerTracebacks = $consumerTracebacksByVariableId.get(id)
+            const $variableData = $variableDataByName.get(name)
             const errorMessage = $variableErrorMessageByName.get(name)
             return (
               <li key={idx}>
                 <TracebackItem
                   $array={$array}
+                  $consumerTracebacks={$consumerTracebacks}
+                  $requestedVariables={$requestedVariables}
+                  $selectedScenarioData={$selectedScenarioData}
                   $traceback={$traceback}
                   $variableData={$variableData}
+                  countryPackageGitHeadSha={countryPackageGitHeadSha}
                   errorMessage={errorMessage}
                   id={id}
-                  isOpened={$isOpenedById.get(id)}
+                  isOpened={$isOpenedByVariableId.get(id)}
                   onToggle={onToggle}
                 />
               </li>
@@ -80,7 +95,7 @@ export default class TracebacksList extends Component {
           })
         }
         {
-          $reverseTracebacks.size < $tracebacks.size && (
+          tracebacksLimit && $reverseTracebacks.size < $tracebacks.size && (
             <p>La liste a été tronquée, seuls les {tracebacksLimit} premiers éléments sont affichés.</p>
           )
         }

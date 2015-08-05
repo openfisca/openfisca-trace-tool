@@ -25,7 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import webservices from "./webservices"
 
 
-const defaultSimulationData = {
+export const defaultSimulationData = {
   "scenarios": [
     {
       "test_case": {
@@ -55,7 +55,7 @@ const defaultSimulationData = {
 
 // API helpers
 
-async function calculate(apiBaseUrl, simulationData) {
+export async function calculate(apiBaseUrl, simulationData) {
   const simulationDataWithTrace = Object.assign({}, simulationData, {trace: true})
   let data = await webservices.calculate(apiBaseUrl, simulationDataWithTrace)
   return data
@@ -64,7 +64,7 @@ async function calculate(apiBaseUrl, simulationData) {
 
 // Helpers
 
-function buildVariableId(variableName, variablePeriod) {
+export function buildVariableId(variableName, variablePeriod) {
   var toValidBootstrapId = function(str) {
     return str.replace(":", "-")
   }
@@ -72,7 +72,7 @@ function buildVariableId(variableName, variablePeriod) {
 }
 
 
-function entitySymbolToKeyPlural(entitySymbol) {
+export function entitySymbolToKeyPlural(entitySymbol) {
   return {
     fam: "familles",
     foy: "foyers_fiscaux",
@@ -82,86 +82,48 @@ function entitySymbolToKeyPlural(entitySymbol) {
 }
 
 
-function findConsumerTracebacks(tracebacks, name, period) {
-  // Find formula tracebacks which call the given variable at the given period.
-  var filteredTracebacks = tracebacks.filter((traceback) => {
-    if (traceback.input_variables && traceback.input_variables.length) {
-      var inputVariable = traceback.input_variables.find((inputVariableData) => {
-        const [argumentName, argumentPeriod] = inputVariableData
-        return argumentName === name && (
-          period === null || argumentPeriod === null || argumentPeriod === period
+export function findConsumerTracebacks($tracebacks, name, period = null) {
+  // Find tracebacks of variables which call the given variable at the given period.
+  const $filteredTracebacks = $tracebacks.filter(($traceback) => {
+    const $inputVariables = $traceback.get("input_variables")
+    return $inputVariables && $inputVariables.size ?
+      $inputVariables.find(($inputVariable) => {
+        const [inputVariableName, inputVariablePeriod] = $inputVariable.toArray()
+        return inputVariableName === name && (
+          period === null || inputVariablePeriod === null || inputVariablePeriod === period
         )
-      })
-      return inputVariable
-    } else {
-      return false
-    }
+      }) :
+      false
   })
-  return filteredTracebacks.length ? filteredTracebacks : null
+  return $filteredTracebacks.size ? $filteredTracebacks : null
 }
 
 
-function findTraceback(tracebacks, name, period) {
-  // Find variable traceback at the given name and period.
-  // Assumes that a traceback exists only once for a given name and period, in the tracebacks list.
-  return tracebacks.find((traceback) => traceback.name === name &&
-    (traceback.period === null || traceback.period === period))
-}
+// function findTraceback(tracebacks, name, period) {
+//   // Find variable traceback at the given name and period.
+//   // Assumes that a traceback exists only once for a given name and period, in the tracebacks list.
+//   return tracebacks.find((traceback) => traceback.name === name &&
+//     (traceback.period === null || traceback.period === period))
+// }
+//
+//
+// function findTracebacks(tracebacks, name, period) {  // jshint ignore:line
+//   // Find variable traceback at the given name and period.
+//   // Assumes that a traceback exists only once for a given name and period, in the tracebacks list.
+//   return tracebacks.filter((traceback) => {
+//     return traceback.name === name && (period === null || traceback.period === null || traceback.period === period)
+//   })
+// }
 
 
-function findTracebacks(tracebacks, name, period) {  // jshint ignore:line
-  // Find variable traceback at the given name and period.
-  // Assumes that a traceback exists only once for a given name and period, in the tracebacks list.
-  return tracebacks.filter((traceback) => {
-    return traceback.name === name && (period === null || traceback.period === null || traceback.period === period)
-  })
-}
-
-
-function getEntityBackgroundColor(entity) {
-  return {
-    fam: "success",
-    familles: "success",
-    foy: "info",
-    foyers_fiscaux: "info",
-    ind: "primary",
-    individus: "primary",
-    men: "warning",
-    menages: "warning",
-  }[entity] || entity
-}
-
-
-function guid() {
-  function s4() {
-    return Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1)
-  }
-  return s4() + s4() + "-" + s4() + "-" + s4() + "-" + s4() + "-" + s4() + s4() + s4()
-}
-
-
-function normalizePeriod(period) {
-  var dashMatches = period.match(/-/g)
-  if (dashMatches) {
-    var dashesCount = dashMatches.length
-    var monthPrefix = "month:"
-    if (dashesCount === 1 && period.startsWith(monthPrefix)) {
-      return period.slice(monthPrefix.length)
-    }
-  }
-  return period
-}
-
-
-export default {
-  buildVariableId,
-  calculate,
-  defaultSimulationData,
-  entitySymbolToKeyPlural,
-  findConsumerTracebacks,
-  findTraceback,
-  findTracebacks,
-  getEntityBackgroundColor,
-  guid,
-  normalizePeriod,
-}
+// function normalizePeriod(period) {
+//   var dashMatches = period.match(/-/g)
+//   if (dashMatches) {
+//     var dashesCount = dashMatches.length
+//     var monthPrefix = "month:"
+//     if (dashesCount === 1 && period.startsWith(monthPrefix)) {
+//       return period.slice(monthPrefix.length)
+//     }
+//   }
+//   return period
+// }

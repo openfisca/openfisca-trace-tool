@@ -22,28 +22,30 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-import {Component} from "react"
-import url from "url"
-
-import {StaticComponent} from "../decorators"
-import config from "../config"
+import {addons} from "react/addons"
 
 
-@StaticComponent
-export default class BreadCrumb extends Component {
-  render() {
-    return (
-      <ul className="breadcrumb">
-        <li>
-          <a href={config.websiteUrl}>Accueil</a>
-        </li>
-        <li>
-          <a href={url.resolve(config.websiteUrl, "/outils")}>Outils</a>
-        </li>
-        <li>
-          Outil de trace
-        </li>
-      </ul>
-    )
-  }
+const {Perf} = addons
+
+
+export function setStatePerf(obj, cb) {
+  Perf.start()
+  return this.setState(obj, () => {
+    if (cb) {
+      cb()
+    }
+    Perf.stop()
+    console.group()
+    console.log("inclusive")
+    Perf.printInclusive()
+    console.groupEnd()
+    console.group()
+    console.log("exclusive")
+    Perf.printExclusive()
+    console.groupEnd()
+    console.group()
+    console.log("wasted")
+    Perf.printWasted()
+    console.groupEnd()
+  })
 }

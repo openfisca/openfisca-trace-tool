@@ -22,27 +22,28 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-import {Component} from "react"
-import url from "url"
-
-import {StaticComponent} from "../decorators"
-import config from "../config"
+import {Component, PropTypes} from "react"
 
 
-@StaticComponent
-export default class BreadCrumb extends Component {
+export default class List extends Component {
+  static propTypes = {
+    children: PropTypes.func,
+    keyProperty: PropTypes.string,
+    type: PropTypes.string,
+    items: PropTypes.any.isRequired,
+  }
   render() {
+    const {children, keyProperty, items, type} = this.props
     return (
-      <ul className="breadcrumb">
-        <li>
-          <a href={config.websiteUrl}>Accueil</a>
-        </li>
-        <li>
-          <a href={url.resolve(config.websiteUrl, "/outils")}>Outils</a>
-        </li>
-        <li>
-          Outil de trace
-        </li>
+      <ul className={type ? `list-${type}` : null} style={{marginBottom: type === "inline" && 0}}>
+        {
+          items.map((item, idx) => (
+            <li key={keyProperty ? item[keyProperty] : idx}>
+              {children ? children(item, idx) : item}
+              {type === "inline" && idx < items.length - 1 ? ", " : null}
+            </li>
+          ))
+        }
       </ul>
     )
   }

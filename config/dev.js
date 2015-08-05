@@ -31,5 +31,6 @@ const WEBPACK_HOST = process.env.HOST || "localhost"
 
 export default {
   apiBaseUrl: `http://${WEBPACK_HOST}:2000`,
+  legislationExplorerBaseUrl: `http://${WEBPACK_HOST}:2030`,
   websiteUrl: `http://${WEBPACK_HOST}:2010/`,
 }

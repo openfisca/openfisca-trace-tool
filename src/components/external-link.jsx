@@ -22,28 +22,21 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-import {Component} from "react"
-import url from "url"
-
-import {StaticComponent} from "../decorators"
-import config from "../config"
+import {Component, PropTypes} from "react"
 
 
-@StaticComponent
-export default class BreadCrumb extends Component {
+export default class ExternalLink extends Component {
+  static propTypes = {
+    children: PropTypes.node.isRequired,
+  }
   render() {
+    const {children, ...otherProps} = this.props
     return (
-      <ul className="breadcrumb">
-        <li>
-          <a href={config.websiteUrl}>Accueil</a>
-        </li>
-        <li>
-          <a href={url.resolve(config.websiteUrl, "/outils")}>Outils</a>
-        </li>
-        <li>
-          Outil de trace
-        </li>
-      </ul>
+      <a rel="external" target="_blank" {...otherProps}>
+        <span aria-hidden="true" className="glyphicon glyphicon-new-window"></span>
+        {" "}
+        {children}
+      </a>
     )
   }
 }

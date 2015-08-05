@@ -24,14 +24,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import {Component, PropTypes} from "react"
 
-import model from "../model"
+import * as model from "../model"
 
 
 export default class VariableLink extends Component {
   static propTypes = {
-    children: PropTypes.string.isRequired,
+    children: PropTypes.node.isRequired,
     name: PropTypes.string.isRequired,
-    onOpen: PropTypes.func.isRequired,
+    // onOpen: PropTypes.func.isRequired,
     period: PropTypes.string,
   }
   handleClick = (event) => {
@@ -46,10 +46,13 @@ export default class VariableLink extends Component {
     //   console.error("This link has no target: " + event.target.hash)
     // }
   }
-  render = () => {
-    var variableId = model.buildVariableId(this.props.name, this.props.period)
+  render() {
+    const {children, name, period} = this.props
+    const id = model.buildVariableId(name, period)
     return (
-      <a href={"#" + variableId} onClick={this.handleClick}>{this.props.children}</a>
+      <a href={"#" + id} onClick={this.handleClick}>
+        {children}
+      </a>
     )
   }
 }

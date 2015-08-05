@@ -24,27 +24,34 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import {Component, PropTypes} from "react"
 
+import {ImmutablePureComponent} from "../decorators"
 import AutosizedTextarea from "./autosized-textarea"
 
 
+@ImmutablePureComponent
 export default class SimulationEditor extends Component {
   static defaultProps = {
     indentWidth: 2,
   }
   static propTypes = {
-    data: PropTypes.object,
+    $data: PropTypes.any,
     indentWidth: PropTypes.number.isRequired,
     isValid: PropTypes.bool,
     onChange: PropTypes.func,
     onJsonError: PropTypes.func,
   }
   handleTextareaChange = (text) => {
-    let data = null
     const {onChange, onJsonError} = this.props
+    if (text.trim() === "") {
+      if (onChange) {
+        onChange(null)
+      }
+      return
+    }
+    let data = null
     try {
       data = JSON.parse(text)
     } catch (error) {
-      console.error(`JSON parse error: ${error.message}`)
       if (onJsonError) {
         onJsonError()
       }
@@ -54,8 +61,9 @@ export default class SimulationEditor extends Component {
       onChange(data)
     }
   }
-  render = () => {
-    const {data, indentWidth, isValid} = this.props
+  render() {
+    const {$data, indentWidth, isValid} = this.props
+    const data = $data.toJS()
     const value = JSON.stringify(data, null, indentWidth)
     return (
       <div style={{position: "relative"}}>

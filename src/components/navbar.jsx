@@ -31,7 +31,7 @@ import config from "../config"
 
 @StaticComponent
 export default class NavBar extends Component {
-  render = () => {
+  render() {
     return (
       <div className="navbar navbar-inverse navbar-static-top" role="navigation">
         <div className="container">

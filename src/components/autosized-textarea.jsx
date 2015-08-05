@@ -58,7 +58,7 @@ export default class AutosizedTextarea extends Component {
       <textarea
         className="form-control"
         disabled={disabled}
-        onChange={this.handleChange}
+        onChange={::this.handleChange}
         rows={Math.max(minRows, nbRows)}
         spellCheck={spellCheck}
         style={{

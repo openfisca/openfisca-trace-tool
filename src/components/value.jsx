@@ -30,12 +30,11 @@ import {PureComponent} from "../decorators"
 @PureComponent
 export default class Value extends Component {
   static propTypes = {
+    children: PropTypes.any.isRequired,
     title: PropTypes.string,
     type: PropTypes.string,
-    value: PropTypes.any.isRequired,
   }
-  format = () => {
-    const {type, value} = this.props
+  format(value, type) {
     if (value === "") {
       return "\"\""
     } else {
@@ -55,11 +54,13 @@ export default class Value extends Component {
       return formattedValue
     }
   }
-  render = () => {
-    const {title} = this.props
-    const formattedValue = this.format()
+  render() {
+    const {children, title, type} = this.props
+    const formattedValue = this.format(children, type)
     return (
-      <span title={title}>{formattedValue}</span>
+      <abbr title={title}>
+        {formattedValue}
+      </abbr>
     )
   }
 }

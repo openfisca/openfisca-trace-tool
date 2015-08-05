@@ -32,7 +32,7 @@ export default class Layout extends Component {
   static propTypes = {
     children: PropTypes.node.isRequired,
   }
-  render = () => {
+  render() {
     return (
       <div>
         <a className="sr-only" href="#content">Sauter au contenu principal</a>

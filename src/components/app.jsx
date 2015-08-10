@@ -25,7 +25,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import {Component} from "react"
 import Immutable from "immutable"
 
-// import {setStatePerf} from "../perf"
 import * as model from "../model"
 import config from "../config"
 import Layout from "./layout"
@@ -53,11 +52,23 @@ export default class App extends Component {
         })
         return
       }
+      // Fetch and open the first traceback item.
+      const {selectedScenarioIdx} = this.state
+      let {$isOpenedByVariableId} = this.state
+      let $tracebacksByScenarioIdx = Immutable.fromJS(data.tracebacks).map(($tracebacks) => $tracebacks.reverse())
+      const $firstTraceback = $tracebacksByScenarioIdx.get(selectedScenarioIdx).first()
+      const name = $firstTraceback.get("name")
+      const selectedScenarioPeriod = $simulationData.getIn(["scenarios", selectedScenarioIdx, "period"])
+      const id = model.buildVariableId(name, selectedScenarioPeriod)
+      const firstTracebackChangeset = await this.fetchVariable(name, selectedScenarioPeriod, id)
+      $isOpenedByVariableId = $isOpenedByVariableId.set(id, true)
       this.setState({
         $arrayByVariableNameByScenarioIdx: Immutable.fromJS(data.variables),
-        $tracebacksByScenarioIdx: Immutable.fromJS(data.tracebacks),
+        $isOpenedByVariableId,
+        $tracebacksByScenarioIdx,
         isSimulationInProgress: false,
         simulationErrorMessage: null,
+        ...firstTracebackChangeset,
       })
     })
   }
@@ -65,7 +76,6 @@ export default class App extends Component {
     super(props)
     this.state = {
       $arrayByVariableNameByScenarioIdx: null,
-      $consumerTracebacksByVariableId: Immutable.Map(),
       $isOpenedByVariableId: Immutable.Map(),
       $simulationData: Immutable.fromJS(model.defaultSimulationData),
       $tracebacksByScenarioIdx: null,
@@ -78,36 +88,28 @@ export default class App extends Component {
       simulationErrorMessage: null,
     }
   }
-  fetchVariable = async (name, period, id) => {
-    const {
-      $consumerTracebacksByVariableId,
-      $tracebacksByScenarioIdx,
-      $variableDataByName,
-      $variableErrorMessageByName,
-      selectedScenarioIdx,
-    } = this.state
+  fetchVariable = async (name, period, id = null) => {
+    const {$variableDataByName, $variableErrorMessageByName} = this.state
+    if (id === null) {
+      id = model.buildVariableId(name, period)
+    }
     let data
     try {
       // TODO Allow api_url GET param
       data = await webservices.fetchVariable(config.apiBaseUrl, name)
     } catch (error) {
       let errorMessage = error.data ? JSON.stringify(error.data, null, 2) : error.message
-      this.setState({
-        $consumerTracebacksByVariableId: $consumerTracebacksByVariableId.set(id, null),
+      return {
         $variableDataByName: $variableDataByName.set(name, null),
         $variableErrorMessageByName: $variableErrorMessageByName.set(name, errorMessage),
         countryPackageGitHeadSha: null,
-      })
-      return
+      }
     }
-    const $selectedScenarioTracebacks = $tracebacksByScenarioIdx && $tracebacksByScenarioIdx.get(selectedScenarioIdx)
-    const $consumerTracebacks = model.findConsumerTracebacks($selectedScenarioTracebacks, name, period)
-    this.setState({
-      $consumerTracebacksByVariableId: $consumerTracebacksByVariableId.set(id, $consumerTracebacks),
+    return {
       $variableDataByName: $variableDataByName.set(name, Immutable.fromJS(data.variables[0])),
       $variableErrorMessageByName: $variableErrorMessageByName.set(name, null),
       countryPackageGitHeadSha: data.country_package_git_head_sha,
-    })
+    }
   }
   handleSelectedScenarioIdxChange = (event) => {
     const selectedScenarioNumber = event.target.valueAsNumber
@@ -142,21 +144,22 @@ export default class App extends Component {
   }
   handleSimulationFormSubmit = (event) => {
     event.preventDefault()
+    // TODO Assert there is at least 1 defined scenario.
     this.calculate()
   }
-  handleTracebackItemToggle = ($traceback, id, isOpened) => {
+  handleTracebackItemToggle = async ($traceback, id, isOpened) => {
     const {$isOpenedByVariableId, $variableDataByName} = this.state
     const name = $traceback.get("name")
-    if (isOpened && !$variableDataByName.includes(name)) {
-      const period = $traceback.get("period"); // eslint-disable-line semi
-      this.fetchVariable(name, period, id)
+    let changeset = {$isOpenedByVariableId: $isOpenedByVariableId.set(id, isOpened)}
+    if (isOpened && !$variableDataByName.has(name)) {
+      const period = $traceback.get("period")
+      changeset = Object.assign(changeset, await this.fetchVariable(name, period, id))
     }
-    this.setState({$isOpenedByVariableId: $isOpenedByVariableId.set(id, isOpened)})
+    this.setState(changeset)
   }
   render() {
     const {
       $arrayByVariableNameByScenarioIdx,
-      $consumerTracebacksByVariableId,
       $isOpenedByVariableId,
       $simulationData,
       $tracebacksByScenarioIdx,
@@ -168,9 +171,18 @@ export default class App extends Component {
       selectedScenarioIdx,
       simulationErrorMessage,
     } = this.state
-    const $selectedScenarioarrayByVariableName = $arrayByVariableNameByScenarioIdx &&
+    const $selectedScenarioArrayByVariableName = $arrayByVariableNameByScenarioIdx &&
       $arrayByVariableNameByScenarioIdx.get(selectedScenarioIdx)
     const $selectedScenarioTracebacks = $tracebacksByScenarioIdx && $tracebacksByScenarioIdx.get(selectedScenarioIdx)
+    const tracebacksLimit = null
+    // const tracebacksLimit = 50
+    let $tracebacks = $selectedScenarioTracebacks
+    if ($selectedScenarioTracebacks) {
+      // const tracebacksLimit = null
+      if (tracebacksLimit) {
+        $tracebacks = $selectedScenarioTracebacks.slice(0, tracebacksLimit)
+      }
+    }
     const nbScenarios = $simulationData && $simulationData.get("scenarios") ?
       $simulationData.get("scenarios").size :
       0
@@ -230,30 +242,34 @@ export default class App extends Component {
                 <pre>{simulationErrorMessage}</pre>
               </div>
             ) : (
-              $selectedScenarioTracebacks && $selectedScenarioarrayByVariableName && (
+              $tracebacks && $selectedScenarioArrayByVariableName && (
                 <div>
                   <p>
                     {
-                      `Cette simulation a fait intervenir ${$selectedScenarioTracebacks.size}
+                      `Cette simulation a fait intervenir ${$tracebacks.size}
                       variables d'entrée ou calculées.`
                     }
                   </p>
                   <TracebacksList
-                    $arrayByVariableName={$selectedScenarioarrayByVariableName}
-                    $consumerTracebacksByVariableId={$consumerTracebacksByVariableId}
+                    $arrayByVariableName={$selectedScenarioArrayByVariableName}
                     $isOpenedByVariableId={$isOpenedByVariableId}
-                    $requestedVariables={$simulationData ? $simulationData.get("variables") : null}
+                    $requestedVariableNames={$simulationData ? $simulationData.get("variables") : null}
                     $selectedScenarioData={
                       $simulationData && $simulationData.get("scenarios") ?
                         $simulationData.getIn(["scenarios", selectedScenarioIdx]) :
                         null
                     }
-                    $tracebacks={$selectedScenarioTracebacks}
+                    $tracebacks={$tracebacks}
                     $variableDataByName={$variableDataByName}
                     $variableErrorMessageByName={$variableErrorMessageByName}
                     countryPackageGitHeadSha={countryPackageGitHeadSha}
                     onToggle={this.handleTracebackItemToggle}
                   />
+                  {
+                    tracebacksLimit && $tracebacks.size < $selectedScenarioTracebacks.size && (
+                      <p>La liste a été tronquée, seuls les {tracebacksLimit} premiers éléments sont affichés.</p>
+                    )
+                  }
                 </div>
               )
             )

@@ -5,7 +5,7 @@ var HtmlPlugin = require("html-webpack-plugin")
 var webpack = require("webpack")
 
 
-const PORT = process.env.npm_package_config_port
+const PORT = process.env.npm_package_config_port // Read from package.json
 
 
 module.exports = {
@@ -38,6 +38,7 @@ module.exports = {
       },
     }),
     new HtmlPlugin({
+      assetsPath: "/public",
       inject: true,
       template: path.join(__dirname, "index_tmpl.html"),
     }),

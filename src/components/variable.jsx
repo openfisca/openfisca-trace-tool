@@ -26,6 +26,7 @@ import {Component, PropTypes} from "react"
 import {FormattedDate, FormattedMessage} from "react-intl"
 
 import {ImmutablePureComponent} from "../decorators"
+import * as model from "../model"
 import ExternalLink from "./external-link"
 import GitHubLink from "./github-link"
 import List from "./list"
@@ -36,8 +37,8 @@ import VariableLink from "./variable-link"
 export default class Variable extends Component {
   static propTypes = {
     // TODO use immutable arrayOf(shape)
-    $consumerTracebacks: PropTypes.any,
-    $requestedVariables: PropTypes.any.isRequired,
+    $requestedVariableNames: PropTypes.any.isRequired,
+    $tracebacks: PropTypes.any.isRequired,
     $variableData: PropTypes.any.isRequired,
     countryPackageGitHeadSha: PropTypes.string.isRequired,
   }
@@ -50,20 +51,19 @@ export default class Variable extends Component {
       <div>
         <p>
           {
-            label && label !== name ?
-              label : (
-                <span className="label label-warning">
-                  aucun libellé
-                  <GitHubLink
-                    blobUrlPath={`${module.split(".").join("/")}.py`}
-                    commitReference={countryPackageGitHeadSha}
-                    lineNumber={line_number}
-                    style={{marginLeft: "1em"}}
-                    text="ajouter"
-                    title="Ajouter un libellé via GitHub"
-                  />
-                </span>
-              )
+            label || (
+              <span className="label label-warning">
+                aucun libellé
+                <GitHubLink
+                  blobUrlPath={`${module.split(".").join("/")}.py`}
+                  commitReference={countryPackageGitHeadSha}
+                  lineNumber={line_number}
+                  style={{marginLeft: "1em"}}
+                  text="ajouter"
+                  title="Ajouter un libellé via GitHub"
+                />
+              </span>
+            )
           }
         </p>
         {this.renderVariableDefinitionsList()}
@@ -219,16 +219,18 @@ export default class Variable extends Component {
     // }
   }
   renderConsumerVariables = () => {
-    const {$consumerTracebacks, $requestedVariables, $variableData} = this.props
+    const {$requestedVariableNames, $tracebacks, $variableData} = this.props
     const label = $variableData.get("label")
     const name = $variableData.get("name")
+    const period = $variableData.get("period")
+    const $consumerTracebacks = model.findConsumerTracebacks($tracebacks, name, period)
     return [
       <dt key="dt">Variables appelantes</dt>,
       <dd key="dd">
         {
           $consumerTracebacks && $consumerTracebacks.size ? (
             <List
-              items={$consumerTracebacks.sortBy(($consumerTraceback) => $consumerTraceback.get("name"))}
+              items={$consumerTracebacks.sortBy(($consumerTraceback) => $consumerTraceback.get("name")).toArray()}
               type="inline"
             >
               {
@@ -246,7 +248,7 @@ export default class Variable extends Component {
                 }
               }
             </List>
-          ) : $requestedVariables.includes(name) ? (
+          ) : $requestedVariableNames.includes(name) ? (
             <p>
               <FormattedMessage
                 message="aucune car la variable {name} a été directement requêtée"
@@ -270,10 +272,10 @@ export default class Variable extends Component {
   renderVariableDefinitionsList = () => {
     const {countryPackageGitHeadSha, $variableData} = this.props
     const entityLabelByNamePlural = {
-      familles: "Famille",
-      foyers_fiscaux: "Foyer fiscal",
-      individus: "Individu",
-      menages: "Ménage",
+      familles: "Familles",
+      foyers_fiscaux: "Foyers fiscaux",
+      individus: "Individus",
+      menages: "Ménages",
     }
     const cerfa_field = $variableData.get("cerfa_field")
     const defaultValue = $variableData.get("default")
@@ -297,7 +299,7 @@ export default class Variable extends Component {
         {
           type === "Enumeration" && (
             <dd>
-              <List items={$variableData.get("labels").entries()} type="unstyled">
+              <List items={$variableData.get("labels").entries().toArray()} type="unstyled">
                 {(entry) => `${entry[0]} = ${entry[1]}`}
               </List>
             </dd>

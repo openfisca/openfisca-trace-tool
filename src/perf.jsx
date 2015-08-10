@@ -28,24 +28,43 @@ import {addons} from "react/addons"
 const {Perf} = addons
 
 
-export function setStatePerf(obj, cb) {
+export async function measurePerf(cb) {
   Perf.start()
-  return this.setState(obj, () => {
-    if (cb) {
-      cb()
-    }
-    Perf.stop()
-    console.group()
-    console.log("inclusive")
-    Perf.printInclusive()
-    console.groupEnd()
-    console.group()
-    console.log("exclusive")
-    Perf.printExclusive()
-    console.groupEnd()
-    console.group()
-    console.log("wasted")
-    Perf.printWasted()
-    console.groupEnd()
-  })
+  await cb()
+  Perf.stop()
+  console.group("perf")
+  console.group("inclusive")
+  Perf.printInclusive()
+  console.groupEnd()
+  console.group("exclusive")
+  Perf.printExclusive()
+  console.groupEnd()
+  console.group("DOM")
+  Perf.printDOM()
+  console.groupEnd()
+  console.group("wasted")
+  Perf.printWasted()
+  console.groupEnd()
+  console.groupEnd()
+}
+
+
+export function monkeyPatch(React) {
+  // Monkey-patch React.render
+  const oldReactRenderMethod = React.render
+  function renderWithPerfs(...args) {
+    measurePerf(() => {
+      oldReactRenderMethod(...args)
+    })
+  }
+  React.render = renderWithPerfs
+  // Monkey-patch Component.setState
+  const oldComponentSetStateMethod = React.Component.prototype.setState
+  function setStateWithPerfs(changeset, cb) {
+    console.trace(`${this.constructor.name}.setState`, changeset)
+    measurePerf(() => {
+      this::oldComponentSetStateMethod(changeset, cb)
+    })
+  }
+  React.Component.prototype.setState = setStateWithPerfs
 }

@@ -32,9 +32,14 @@ hljs.registerLanguage("python", require("highlight.js/lib/languages/python"))
 
 import React from "react"
 
+// import * as perf from "./perf"
 import App from "./components/app"
 
 
-const appMountNode = document.getElementById("app-mount-node")
+// if (process.env.NODE_ENV === "development") {
+//   // Monkey-patch React.render and React.Component.prototype.setState to display Perf measurements.
+//   perf.monkeyPatch(React)
+// }
 
+const appMountNode = document.getElementById("app-mount-node")
 React.render(<App />, appMountNode)

@@ -34,9 +34,8 @@ export default class TracebacksList extends Component {
   static propTypes = {
     // TODO use immutable arrayOf(shape)
     $arrayByVariableName: PropTypes.any.isRequired,
-    $consumerTracebacksByVariableId: PropTypes.any.isRequired,
     $isOpenedByVariableId: PropTypes.any.isRequired,
-    $requestedVariables: PropTypes.any.isRequired,
+    $requestedVariableNames: PropTypes.any.isRequired,
     $selectedScenarioData: PropTypes.any.isRequired,
     $tracebacks: PropTypes.any.isRequired,
     $variableDataByName: PropTypes.any.isRequired,
@@ -47,9 +46,8 @@ export default class TracebacksList extends Component {
   render() {
     const {
       $arrayByVariableName,
-      $consumerTracebacksByVariableId,
       $isOpenedByVariableId,
-      $requestedVariables,
+      $requestedVariableNames,
       $selectedScenarioData,
       $tracebacks,
       $variableDataByName,
@@ -57,47 +55,34 @@ export default class TracebacksList extends Component {
       countryPackageGitHeadSha,
       onToggle,
     } = this.props
-    const tracebacksLimit = null
-    // const tracebacksLimit = 50
-    // const $reverseTracebacks = $tracebacks.reverse().slice(0, tracebacksLimit)
-    const $reverseTracebacks = $tracebacks.reverse()
     return (
       <ul className="list-unstyled">
         {
-          $reverseTracebacks.map(($traceback, idx) => {
+          $tracebacks.map(($traceback, idx) => {
             const name = $traceback.get("name")
             const period = $traceback.get("period")
             const $arrayByPeriodOrArray = $arrayByVariableName.get(name)
-            const $array = Array.isArray($arrayByPeriodOrArray.toJS()) ?
-              $arrayByPeriodOrArray :
-              $arrayByPeriodOrArray.get(period)
             const id = model.buildVariableId(name, period)
-            const $consumerTracebacks = $consumerTracebacksByVariableId.get(id)
             const $variableData = $variableDataByName.get(name)
             const errorMessage = $variableErrorMessageByName.get(name)
             return (
               <li key={idx}>
                 <TracebackItem
-                  $array={$array}
-                  $consumerTracebacks={$consumerTracebacks}
-                  $requestedVariables={$requestedVariables}
+                  $arrayByPeriodOrArray={$arrayByPeriodOrArray}
+                  $requestedVariableNames={$requestedVariableNames}
                   $selectedScenarioData={$selectedScenarioData}
                   $traceback={$traceback}
+                  $tracebacks={$tracebacks}
                   $variableData={$variableData}
                   countryPackageGitHeadSha={countryPackageGitHeadSha}
                   errorMessage={errorMessage}
                   id={id}
-                  isOpened={$isOpenedByVariableId.get(id)}
+                  isOpened={$isOpenedByVariableId.get(id) || false}
                   onToggle={onToggle}
                 />
               </li>
             )
           })
-        }
-        {
-          tracebacksLimit && $reverseTracebacks.size < $tracebacks.size && (
-            <p>La liste a été tronquée, seuls les {tracebacksLimit} premiers éléments sont affichés.</p>
-          )
         }
       </ul>
     )

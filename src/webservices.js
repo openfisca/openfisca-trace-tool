@@ -22,9 +22,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-const debug = require("debug")("app:webservices")
-
-
 // Fetch polyfill
 
 function loadFetch() {
@@ -58,7 +55,6 @@ async function checkStatus(response) {
 
 export async function fetchCachedJson(url, options) {
   if (dataByUrl.has(url)) {
-    debug("Found data in cache for URL", url)
     return dataByUrl.get(url)
   } else {
     let data = await fetchJson(url, options)
@@ -69,15 +65,9 @@ export async function fetchCachedJson(url, options) {
 
 
 function fetchJson(url, options) {
-  return loggedFetch(url, options)
+  return fetch(url, options)
     .then(checkStatus)
     .then(parseJson)
-}
-
-
-function loggedFetch(url, ...args) {
-  debug("About to fetch URL", url)
-  return fetch(url, ...args)
 }
 
 

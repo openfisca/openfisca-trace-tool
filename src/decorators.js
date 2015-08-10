@@ -32,14 +32,20 @@ const {PureRenderMixin} = addons
 
 export function ImmutablePureComponent(component) {
   component.prototype.shouldComponentUpdate = function(nextProps, nextState) {
-    return ImmutableRenderMixin.shouldComponentUpdate.call(this, nextProps, nextState)
+    const shouldComponentUpdate = this::ImmutableRenderMixin.shouldComponentUpdate(nextProps, nextState)
+    // if (process.env.NODE_ENV === "development" && shouldComponentUpdate) {
+    //   // TODO Check this code section is deleted in prod.
+    //   debugger // eslint-disable-line
+    //   this::ImmutableRenderMixin.shouldComponentUpdate(nextProps, nextState)
+    // }
+    return shouldComponentUpdate
   }
 }
 
 
 export function PureComponent(component) {
   component.prototype.shouldComponentUpdate = function(nextProps, nextState) {
-    return PureRenderMixin.shouldComponentUpdate.call(this, nextProps, nextState)
+    return this::PureRenderMixin.shouldComponentUpdate(nextProps, nextState)
   }
 }
 

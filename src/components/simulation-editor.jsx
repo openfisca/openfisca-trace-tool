@@ -63,8 +63,9 @@ export default class SimulationEditor extends Component {
   }
   render() {
     const {$data, indentWidth, isValid} = this.props
-    const data = $data.toJS()
-    const value = JSON.stringify(data, null, indentWidth)
+    const value = $data ?
+      JSON.stringify($data.toJS(), null, indentWidth) :
+      ""
     return (
       <div style={{position: "relative"}}>
         <AutosizedTextarea

@@ -4,7 +4,7 @@ var WebpackDevServer = require("webpack-dev-server")
 var config = require("./webpack.config")
 
 
-const PORT = process.env.npm_package_config_port
+const PORT = process.env.npm_package_config_port // Read from package.json
 
 
 new WebpackDevServer(webpack(config), {

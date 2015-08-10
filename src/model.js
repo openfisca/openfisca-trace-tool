@@ -56,7 +56,10 @@ export const defaultSimulationData = {
 // API helpers
 
 export async function calculate(apiBaseUrl, simulationData) {
-  const simulationDataWithTrace = Object.assign({}, simulationData, {trace: true})
+  const simulationDataWithTrace = {
+    trace: true,
+    ...simulationData,
+  }
   let data = await webservices.calculate(apiBaseUrl, simulationDataWithTrace)
   return data
 }

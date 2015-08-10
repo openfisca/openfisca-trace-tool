@@ -50,7 +50,7 @@ export default class AutosizedTextarea extends Component {
       this.setState({value}, () => onChange(value))
     }
   }
-  render = () => {
+  render() {
     const {backgroundColor, disabled, fontFamily, minRows, spellCheck} = this.props
     const {value} = this.state
     const nbRows = value ? value.split("\n").length : 1
@@ -58,7 +58,7 @@ export default class AutosizedTextarea extends Component {
       <textarea
         className="form-control"
         disabled={disabled}
-        onChange={::this.handleChange}
+        onChange={this.handleChange}
         rows={Math.max(minRows, nbRows)}
         spellCheck={spellCheck}
         style={{

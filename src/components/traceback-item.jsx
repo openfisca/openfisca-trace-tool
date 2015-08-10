@@ -24,6 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import {Component, PropTypes} from "react"
 import classNames from "classnames"
+import Immutable from "immutable"
 
 // import VariableLink from "./variable-link"
 import {ImmutablePureComponent} from "../decorators"
@@ -38,11 +39,11 @@ import Variable from "./variable"
 export default class TracebackItem extends Component {
   static propTypes = {
     // TODO use immutable arrayOf(shape)
-    $array: PropTypes.any.isRequired,
-    $consumerTracebacks: PropTypes.any,
-    $requestedVariables: PropTypes.any.isRequired,
+    $arrayByPeriodOrArray: PropTypes.any.isRequired,
+    $requestedVariableNames: PropTypes.any.isRequired,
     $selectedScenarioData: PropTypes.any.isRequired,
     $traceback: PropTypes.any.isRequired,
+    $tracebacks: PropTypes.any.isRequired,
     $variableData: PropTypes.any,
     countryPackageGitHeadSha: PropTypes.string,
     errorMessage: PropTypes.string,
@@ -62,17 +63,22 @@ export default class TracebackItem extends Component {
   }
   render() {
     const {
-      $array,
-      $consumerTracebacks,
-      $requestedVariables,
+      $arrayByPeriodOrArray,
+      $requestedVariableNames,
       $selectedScenarioData,
       $traceback,
+      $tracebacks,
       $variableData,
       countryPackageGitHeadSha,
       errorMessage,
       id,
       isOpened,
     } = this.props
+    function truncate(str, length) {
+      const truncated = str.slice(0, length)
+      return truncated.length < str.length ? truncated + "…" : truncated
+    }
+    const shortLabelMaxLength = 60
     const cellType = $traceback.get("cell_type")
     const entitySymbol = $traceback.get("entity")
     const label = $traceback.get("label")
@@ -81,28 +87,51 @@ export default class TracebackItem extends Component {
     const entityKeyPlural = model.entitySymbolToKeyPlural(entitySymbol)
     const $testCase = $selectedScenarioData.get("test_case")
     const $entities = $testCase.get(entityKeyPlural)
+    const $array = Immutable.List.isList($arrayByPeriodOrArray) ?
+      $arrayByPeriodOrArray :
+      $arrayByPeriodOrArray.get(period)
     return (
       <div className="panel panel-default" id={id}>
         <div className="clearfix panel-heading">
-          <a href="#" onClick={this.handleToggleClick}>
-            <span
-              aria-hidden="true"
-              className={
-                classNames("glyphicon", isOpened ? "glyphicon-chevron-down" : "glyphicon-chevron-right")
-              }
-            />
-            {" "}
-            <abbr title={label}>{name}</abbr>
-            {" "}
-            {period || "(sans période)"}
-          </a>
-          <ExternalLink
-            href={`${config.legislationExplorerBaseUrl}/variables/${name}`}
-            style={{marginLeft: "1em"}}
-            title="Ouvrir dans l'explorateur de variables"
-          >
-            ouvrir
-          </ExternalLink>
+          <div className="pull-left">
+            <a
+              href="#"
+              onClick={this.handleToggleClick}
+              title={`${isOpened ? "Fermer" : "Ouvrir"} cette étape du calcul`}
+            >
+              <span
+                aria-hidden="true"
+                className={
+                  classNames("glyphicon", isOpened ? "glyphicon-chevron-down" : "glyphicon-chevron-right")
+                }
+              />
+              {" "}
+              {name}
+              {" "}
+              {period || "(sans période)"}
+            </a>
+            <ExternalLink
+              href={`${config.legislationExplorerBaseUrl}/variables/${name}`}
+              style={{marginLeft: "1em"}}
+              title="Ouvrir dans l'explorateur de variables"
+            >
+              ouvrir
+            </ExternalLink>
+            {
+              !isOpened && (
+                <div className="text-muted">
+                  {
+                    label ?
+                      (label.length <= shortLabelMaxLength ? label : truncate(label, shortLabelMaxLength)) : (
+                        <span className="label label-warning">
+                          aucun libellé
+                        </span>
+                      )
+                  }
+                </div>
+              )
+            }
+          </div>
           <div className="pull-right text-right">
             <samp className="text-muted" style={{display: "inline-block", marginRight: "0.5em"}}>[</samp>
             <ul className="list-inline" style={{display: "inline-block"}}>
@@ -130,37 +159,31 @@ export default class TracebackItem extends Component {
               }
             </ul>
             <samp className="text-muted" style={{display: "inline-block"}}>]</samp>
-            <p className="text-muted">{entityKeyPlural}</p>
+            <div className="text-muted">{entityKeyPlural}</div>
           </div>
         </div>
-        {
-          isOpened && (
-            <div className="panel-body">
-              {
-                errorMessage ? (
-                  <div className="alert alert-danger">
-                    <p>
-                      <strong>Erreur lors de l'appel de l'API !</strong>
-                      <a href="#" onClick={this.handleRetryClick} style={{marginLeft: "1em"}}>
-                        Réessayer
-                      </a>
-                    </p>
-                    <pre>{errorMessage}</pre>
-                  </div>
-                ) : $variableData && countryPackageGitHeadSha ? (
-                  <Variable
-                    $consumerTracebacks={$consumerTracebacks}
-                    $requestedVariables={$requestedVariables}
-                    $variableData={$variableData}
-                    countryPackageGitHeadSha={countryPackageGitHeadSha}
-                  />
-                ) : (
-                  <p>Chargement en cours…</p>
-                )
-              }
-            </div>
-          )
-        }
+        <div className={classNames("panel-body", {hide: !isOpened})}>
+          {
+            errorMessage ? (
+              <div className="alert alert-danger">
+                <p>
+                  <strong>Erreur lors de l'appel de l'API !</strong>
+                  <a href="#" onClick={this.handleRetryClick} style={{marginLeft: "1em"}}>
+                    Réessayer
+                  </a>
+                </p>
+                <pre>{errorMessage}</pre>
+              </div>
+            ) : $variableData && countryPackageGitHeadSha ? (
+              <Variable
+                $requestedVariableNames={$requestedVariableNames}
+                $tracebacks={$tracebacks}
+                $variableData={$variableData}
+                countryPackageGitHeadSha={countryPackageGitHeadSha}
+              />
+          ) : null
+          }
+        </div>
       </div>
     )
   }

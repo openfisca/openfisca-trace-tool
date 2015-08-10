@@ -6,6 +6,7 @@
     "port": 2040
   },
   "scripts": {
+    "build": "webpack --config webpack.config.prod.js",
     "clean": "rm -rf public",
     "linter": "eslint --ext .js,.jsx .",
     "start": "babel-node server.js"
@@ -13,10 +14,10 @@
   "author": "Christophe Benz <christophe.benz@data.gouv.fr>",
   "license": "AGPLv3+",
   "devDependencies": {
+    "babel": "^5.8.21",
     "babel-core": "^5.8.20",
     "babel-eslint": "^4.0.5",
     "babel-loader": "^5.3.2",
-    "debug": "^2.2.0",
     "eslint": "^1.0.0",
     "eslint-plugin-react": "^3.2.0",
     "html-webpack-plugin": "^1.6.1",

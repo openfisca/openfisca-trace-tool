@@ -51,7 +51,7 @@ export default class GitHubLink extends Component {
       line = `#L${lineNumber}`
     }
     if (endLineNumber) {
-      line = `${line}-${endLineNumber}`
+      line = `${line}-L${endLineNumber}`
     }
     return `https://github.com/openfisca/openfisca-france/blob/${commitReference}/${blobUrlPath}${line}`
   }

@@ -78,7 +78,7 @@ function parseJson(response) {
 
 // API fetch functions
 
-function calculate(apiBaseUrl, simulationData) {
+export function calculate(apiBaseUrl, simulationData) {
   return fetchJson(
     apiBaseUrl + "/api/1/calculate",
     {
@@ -94,10 +94,12 @@ function calculate(apiBaseUrl, simulationData) {
 }
 
 
-function fetchVariable(apiBaseUrl, name) {
-  // TODO update to variables endpoint
-  return fetchCachedJson(apiBaseUrl + "/api/1/variables?name=" + name)
+export function fetchParameters(apiBaseUrl, names) {
+  const queryString = names.map((name) => "name=" + name).join("&")
+  return fetchJson(apiBaseUrl + "/api/1/parameters?" + queryString)
 }
 
 
-export default {calculate, fetchVariable}
+export function fetchVariable(apiBaseUrl, name) {
+  return fetchCachedJson(apiBaseUrl + "/api/1/variables?name=" + name)
+}

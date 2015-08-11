@@ -22,28 +22,26 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-// Polyfills, loaded at the very first.
-
-require("babel-core/polyfill")
-
 import hljs from "highlight.js/lib/highlight"
-hljs.registerLanguage("python", require("highlight.js/lib/languages/python"))
+import React, {Component, PropTypes} from "react"
 
 
-import React from "react"
-
-// import * as perf from "./perf"
-import {IntlApp, intlData, polyfillIntl} from "./intl"
-
-
-function renderApp() {
-  // if (process.env.NODE_ENV === "development") {
-  //   // Monkey-patch React.render and React.Component.prototype.setState to display Perf measurements.
-  //   perf.monkeyPatch(React)
-  // }
-  const appMountNode = document.getElementById("app-mount-node")
-  React.render(<IntlApp {...intlData} />, appMountNode)
+export default class Highlight extends Component {
+  static propTypes = {
+    children: PropTypes.node.isRequired,
+    language: PropTypes.string.isRequired,
+  }
+  componentDidMount() {
+    this.highlightCode()
+  }
+  highlightCode = () => {
+    hljs.highlightBlock(React.findDOMNode(this))
+  }
+  render() {
+    return (
+      <pre className={this.props.language}>
+        {this.props.children}
+      </pre>
+    )
+  }
 }
-
-
-polyfillIntl(renderApp)

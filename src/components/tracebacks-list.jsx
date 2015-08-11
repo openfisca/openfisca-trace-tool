@@ -35,6 +35,7 @@ export default class TracebacksList extends Component {
     // TODO use immutable arrayOf(shape)
     $arrayByVariableName: PropTypes.any.isRequired,
     $isOpenedByVariableId: PropTypes.any.isRequired,
+    $parameterDataByName: PropTypes.any.isRequired,
     $requestedVariableNames: PropTypes.any.isRequired,
     $selectedScenarioData: PropTypes.any.isRequired,
     $tracebacks: PropTypes.any.isRequired,
@@ -47,6 +48,7 @@ export default class TracebacksList extends Component {
     const {
       $arrayByVariableName,
       $isOpenedByVariableId,
+      $parameterDataByName,
       $requestedVariableNames,
       $selectedScenarioData,
       $tracebacks,
@@ -69,6 +71,7 @@ export default class TracebacksList extends Component {
               <li key={idx}>
                 <TracebackItem
                   $arrayByPeriodOrArray={$arrayByPeriodOrArray}
+                  $parameterDataByName={$parameterDataByName}
                   $requestedVariableNames={$requestedVariableNames}
                   $selectedScenarioData={$selectedScenarioData}
                   $traceback={$traceback}

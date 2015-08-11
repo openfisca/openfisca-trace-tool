@@ -25,10 +25,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import {Component, PropTypes} from "react"
 import {FormattedDate, FormattedMessage} from "react-intl"
 
+
 import {ImmutablePureComponent} from "../decorators"
 import * as model from "../model"
+import config from "../config"
 import ExternalLink from "./external-link"
+import FormulaSource from "./formula-source"
 import GitHubLink from "./github-link"
+import Highlight from "./highlight"
 import List from "./list"
 import VariableLink from "./variable-link"
 
@@ -37,15 +41,30 @@ import VariableLink from "./variable-link"
 export default class Variable extends Component {
   static propTypes = {
     // TODO use immutable arrayOf(shape)
+    $parameterDataByName: PropTypes.any.isRequired,
     $requestedVariableNames: PropTypes.any.isRequired,
+    $traceback: PropTypes.any.isRequired,
     $tracebacks: PropTypes.any.isRequired,
     $variableData: PropTypes.any.isRequired,
     countryPackageGitHeadSha: PropTypes.string.isRequired,
   }
+  // getParameterValue = (parameter, instant) => {
+  //   const type = parameter["@type"]
+  //   const isBetween = item => item.start <= instant && item.stop >= instant
+  //   if (type === "Parameter") {
+  //     return (parameter.values.find(isBetween) || parameter.values[0]).value
+  //   } else {
+  //     // type === "Scale"
+  //     return null
+  //   }
+  // }
   render() {
     const {$variableData, countryPackageGitHeadSha} = this.props
+    const $formula = $variableData.get("formula")
+    const formula = $formula && $formula.toJS()
     const label = $variableData.get("label")
     const module = $variableData.get("module")
+    const name = $variableData.get("name")
     const line_number = $variableData.get("line_number")
     return (
       <div>
@@ -66,157 +85,25 @@ export default class Variable extends Component {
             )
           }
         </p>
+        <p>
+          <ExternalLink
+            href={`${config.legislationExplorerBaseUrl}/variables/${name}`}
+            title="Ouvrir dans l'explorateur de variables"
+          >
+            Explorateur de variables
+          </ExternalLink>
+        </p>
         {this.renderVariableDefinitionsList()}
-        <hr />
+        {formula && <hr />}
         {
-          // formula && (
-          //   formula["@type"] === "DatedFormula" ?
-          //     this.renderDatedFormula(formula) :
-          //     this.renderSimpleFormula(formula)
-          // )
+          formula && (
+            formula["@type"] === "DatedFormula" ?
+              this.renderDatedFormula(formula) :
+              this.renderSimpleFormula(formula)
+          )
         }
       </div>
     )
-
-    // // const variableId = model.buildVariableId(this.props.name, this.props.period)
-    // if (formula["@type"] === "DatedFormula") {
-    //   return (
-    //     <div>
-    //       <h3>DatedFormula <small>Fonctions datées</small></h3>
-    //       <p>Une ou plusieurs des formules ci-dessous sont appelées en fonction de la période demandée.</p>
-    //       {formula.doc && formula.doc !== this.props.label && <p>{formula.doc}</p>}
-    //       <div aria-multiselectable="true" className="panel-group" id={accordionId} role="tablist">
-    //         {
-    //           formula.dated_formulas.map((datedFormula, idx) => {
-    //             var mainVariableId = accordionId + "-" + idx
-    //             var headingId = mainVariableId + "-heading"
-    //             return (
-    //               <div className="panel panel-default" key={idx}>
-    //                 <div className="panel-heading" id={headingId} role="tab">
-    //                   <h4 className="panel-title">
-    //                     <a
-    //                       aria-controls={mainVariableId}
-    //                       aria-expanded="false"
-    //                       data-parent={"#" + accordionId}
-    //                       data-toggle="collapse"
-    //                       href={"#" + mainVariableId}>
-    //                       {datedFormula.start_instant + " – " + datedFormula.stop_instant}
-    //                     </a>
-    //                   </h4>
-    //                 </div>
-    //                 <div
-    //                   aria-labelledby={headingId}
-    //                   className={classNames({collapse: true, "panel-collapse ": true})}
-    //                   id={mainVariableId}
-    //                   role="tabpanel">
-    //                   <div className="panel-body">
-    //                     {this.renderFormula(datedFormula.formula)}
-    //                   </div>
-    //                 </div>
-    //               </div>
-    //             )
-    //           })
-    //         }
-    //       </div>
-    //     </div>
-    //   )
-    // } else if (formula["@type"] === "SimpleFormula") {
-    //   var githubUrl = "https://github.com/openfisca/openfisca-france/tree/master/" +
-    //     formula.module.split(".").join("/") + ".py#L" + formula.line_number + "-" +
-    //     (formula.line_number + formula.source.trim().split("\n").length - 1)
-    //   var sourceCodeId = model.guid()
-    //   return (
-    //     <div>
-    //       {formula.doc && formula.doc !== this.props.label && <p>{formula.doc}</p>}
-    //       <div>
-    //         <h3>Variables d'entrée</h3>
-    //         <table className="table">
-    //           <thead>
-    //             <tr>
-    //               <th>Nom</th>
-    //               <th>Période</th>
-    //               <th>Libellé</th>
-    //               <th>Entité</th>
-    //               {this.props.inputVariables && <th className="text-right">Valeur</th>}
-    //             </tr>
-    //           </thead>
-    //           <tbody>
-    //             {
-    //               this.props.inputVariables && this.props.inputVariables.map((inputVariableData, idx) => {
-    //                 var argumentName = inputVariableData[0],
-    //                   argumentPeriod = inputVariableData[1]
-    //                 var isComputed = argumentName in this.props.variableByName // Useful with some dated formulas.
-    //                 var argumentValues = isComputed ? (
-    //                   Array.isArray(this.props.variableByName[argumentName]) ?
-    //                     this.props.variableByName[argumentName] :
-    //                     this.props.variableByName[argumentName][argumentPeriod]
-    //                 ) : null
-    //                 // TODO index tracebacks before
-    //                 var argumentTraceback = model.findTraceback(this.props.tracebacks, argumentName, argumentPeriod)
-    //                 return argumentTraceback && (
-    //                   <tr key={idx}>
-    //                     <td>
-    //                       <VariableLink name={argumentName} onOpen={this.props.onOpen} period={argumentPeriod}>
-    //                         {argumentName}
-    //                       </VariableLink>
-    //                     </td>
-    //                     <td>{argumentPeriod || "–"}</td>
-    //                     <td>{argumentTraceback.label !== argumentName ? argumentTraceback.label : ""}</td>
-    //                     <td>
-    //                       <span className={
-    //                         classNames("label", "label-" + model.getEntityBackgroundColor(argumentTraceback.entity))
-    //                       }>
-    //                         {argumentTraceback.entity}
-    //                       </span>
-    //                     </td>
-    //                     <td>
-    //                       {
-    //                         argumentValues && (
-    //                           <ul className="list-unstyled">
-    //                             {
-    //                               argumentValues.map((value, valueIdx) => (
-    //                                 <li className="text-right" key={valueIdx}>
-    //                                   <samp>
-    //                                     <Value
-    //                                       isDefaultArgument={this.props.hasAllDefaultArguments}
-    //                                       type={null}
-    //                                       value={value}
-    //                                     />
-    //                                   </samp>
-    //                                 </li>
-    //                               ))
-    //                             }
-    //                           </ul>
-    //                         )
-    //                       }
-    //                     </td>
-    //                   </tr>
-    //                 )
-    //               })
-    //             }
-    //           </tbody>
-    //         </table>
-    //       </div>
-    //       <h3>
-    //         <a
-    //           aria-controls={sourceCodeId}
-    //           aria-expanded="false"
-    //           data-target={"#" + sourceCodeId}
-    //           data-toggle="collapse"
-    //           href="#"
-    //           onClick={function(event) { event.preventDefault() }}
-    //           title="afficher / masquer"
-    //         >
-    //           Code source
-    //         </a>
-    //         <span> – <a href={githubUrl} rel="external" target="_blank">ouvrir dans GitHub</a></span>
-    //       </h3>
-    //       <pre className="collapse" id={sourceCodeId}>
-    //         <code data-language="python">{formula.source}</code>
-    //       </pre>
-    //     </div>
-    //   )
-    // }
   }
   renderConsumerVariables = () => {
     const {$requestedVariableNames, $tracebacks, $variableData} = this.props
@@ -268,6 +155,138 @@ export default class Variable extends Component {
         }
       </dd>,
     ]
+  }
+  renderDatedFormula = (formula) => {
+    return formula.dated_formulas.map((datedFormula, idx) => (
+      <div key={idx}>
+        <h4 style={{display: "inline-block"}}>
+          {this.renderDatedFormulaHeading(datedFormula)}
+        </h4>
+        {this.renderFormula(datedFormula.formula)}
+        <hr />
+      </div>
+    ))
+  }
+  renderDatedFormulaHeading = (formula) => {
+    const {start_instant, stop_instant} = formula
+    let heading
+    if (start_instant && stop_instant) {
+      heading = (
+        <FormattedMessage
+          message="Formule de calcul du {start} au {stop}"
+          start={<FormattedDate format="short" value={start_instant} />}
+          stop={<FormattedDate format="short" value={stop_instant} />}
+        />
+      )
+    } else if (start_instant) {
+      heading = (
+        <FormattedMessage
+          message="Formule de calcul depuis le {start}"
+          start={<FormattedDate format="short" value={start_instant} />}
+        />
+      )
+    } else if (stop_instant) {
+      heading = (
+        <FormattedMessage
+          message="Formule de calcul jusqu'au {stop}"
+          stop={<FormattedDate format="short" value={stop_instant} />}
+        />
+      )
+    }
+    return heading
+  }
+  renderFormula = (formula) => {
+    const {$parameterDataByName, $traceback} = this.props
+    const {line_number, module, source} = formula
+    const $tracebackInputVariablesData = $traceback.get("input_variables")
+    const tracebackInputVariablesData = $tracebackInputVariablesData && $tracebackInputVariablesData.toJS()
+    const formulaParameterNames = formula.parameters
+    return (
+      <div>
+        {
+          (tracebackInputVariablesData || formulaParameterNames) && (
+            <dl className="dl-horizontal">
+              {tracebackInputVariablesData && <dt>Variables d'entrée</dt>}
+              {
+                tracebackInputVariablesData && (
+                  <dd style={{marginBottom: "1em"}}>
+                    <List items={tracebackInputVariablesData} type="inline">
+                      {([name, period]) => <VariableLink name={name} period={period}>{name}</VariableLink>}
+                    </List>
+                  </dd>
+                )
+              }
+              {formulaParameterNames && <dt>Paramètres</dt>}
+              {
+                formulaParameterNames && (
+                  <dd>
+                    <List items={formulaParameterNames} type="inline">
+                      {
+                        (parameterName) => {
+                          const $parameter = $parameterDataByName.get(parameterName)
+                          const parameter = $parameter && $parameter.toJS()
+                          return parameter ? (
+                            <span>
+                              <ExternalLink params={{name: parameterName}} title={parameter.description} to="parameter">
+                                {parameterName}
+                              </ExternalLink>
+                            </span>
+                          ) : (
+                            <span>
+                              {parameterName}
+                              {" "}
+                              <span className="label label-warning">inexistant</span>
+                            </span>
+                          )
+                        }
+                      }
+                    </List>
+                  </dd>
+                )
+              }
+            </dl>
+          )
+        }
+        <div style={{position: "relative"}}>
+          <Highlight language="python">
+            <FormulaSource inputVariablesData={tracebackInputVariablesData}>
+              {source}
+            </FormulaSource>
+          </Highlight>
+          <GitHubLink
+            blobUrlPath={`${module.split(".").join("/")}.py`}
+            commitReference={this.props.countryPackageGitHeadSha}
+            endLineNumber={line_number + source.trim().split("\n").length - 1}
+            lineNumber={line_number}
+            style={{
+              position: "absolute",
+              right: "0.5em",
+              top: "0.3em",
+            }}
+          >
+            {children => <small>{children}</small>}
+          </GitHubLink>
+        </div>
+      </div>
+    )
+  }
+  // renderParameterValue = (parameter) => {
+  //   const {$traceback} = this.props
+  //   const period = $traceback.get("period")
+  //   debugger
+  //   return (
+  //     <samp>
+  //       {this.getParameterValue(parameter, "TODO")}
+  //     </samp>
+  //   )
+  // }
+  renderSimpleFormula = (formula) => {
+    return (
+      <div>
+        <h4 style={{display: "inline-block"}}>Formule de calcul</h4>
+        {this.renderFormula(formula)}
+      </div>
+    )
   }
   renderVariableDefinitionsList = () => {
     const {countryPackageGitHeadSha, $variableData} = this.props

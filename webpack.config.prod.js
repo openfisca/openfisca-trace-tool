@@ -29,6 +29,10 @@ module.exports = {
         loaders: ["babel"],
         test: /\.jsx?$/,
       },
+      {
+        loaders: ["json"],
+        test: /\.json$/,
+      },
     ],
   },
   resolve: {

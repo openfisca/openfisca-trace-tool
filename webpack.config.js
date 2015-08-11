@@ -56,6 +56,10 @@ module.exports = {
         loaders: ["react-hot", "babel"],
         test: /\.(js|jsx)$/,
       },
+      {
+        loaders: ["json"],
+        test: /\.json$/,
+      },
     ],
   },
 }

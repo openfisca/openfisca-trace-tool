@@ -26,50 +26,44 @@ import {Component} from "react"
 import Immutable from "immutable"
 
 import * as model from "../model"
+import * as webservices from "../webservices"
 import config from "../config"
 import Layout from "./layout"
 import SimulationEditor from "./simulation-editor"
 import TracebacksList from "./tracebacks-list"
-import webservices from "../webservices"
 
 
 export default class App extends Component {
   calculate = () => {
-    this.setState({isSimulationInProgress: true}, async () => {
+    this.setState({isCalculateInProgress: true}, async () => {
       const {$simulationData} = this.state
       const simulationData = $simulationData.toJS()
-      let data
+      let calculateData
+      let changeset = {isCalculateInProgress: false}
       try {
         // TODO Allow api_url GET param
-        data = await model.calculate(config.apiBaseUrl, simulationData)
+        calculateData = await model.calculate(config.apiBaseUrl, simulationData)
       } catch (error) {
         let simulationErrorMessage = error.data ? JSON.stringify(error.data, null, 2) : error.message
-        this.setState({
+        changeset = {
+          ...changeset,
           $arrayByVariableNameByScenarioIdx: null,
           $tracebacksByScenarioIdx: null,
-          isSimulationInProgress: false,
           simulationErrorMessage,
-        })
+        }
+        this.setState(changeset)
         return
       }
-      // Fetch and open the first traceback item.
-      const {selectedScenarioIdx} = this.state
-      let {$isOpenedByVariableId} = this.state
-      let $tracebacksByScenarioIdx = Immutable.fromJS(data.tracebacks).map(($tracebacks) => $tracebacks.reverse())
-      const $firstTraceback = $tracebacksByScenarioIdx.get(selectedScenarioIdx).first()
-      const name = $firstTraceback.get("name")
-      const selectedScenarioPeriod = $simulationData.getIn(["scenarios", selectedScenarioIdx, "period"])
-      const id = model.buildVariableId(name, selectedScenarioPeriod)
-      const firstTracebackChangeset = await this.fetchVariable(name, selectedScenarioPeriod, id)
-      $isOpenedByVariableId = $isOpenedByVariableId.set(id, true)
-      this.setState({
-        $arrayByVariableNameByScenarioIdx: Immutable.fromJS(data.variables),
-        $isOpenedByVariableId,
+      let $tracebacksByScenarioIdx = Immutable.fromJS(calculateData.tracebacks).map(
+        ($tracebacks) => $tracebacks.reverse()
+      )
+      changeset = {
+        ...changeset,
+        $arrayByVariableNameByScenarioIdx: Immutable.fromJS(calculateData.variables),
         $tracebacksByScenarioIdx,
-        isSimulationInProgress: false,
         simulationErrorMessage: null,
-        ...firstTracebackChangeset,
-      })
+      }
+      this.setState(changeset)
     })
   }
   constructor(props) {
@@ -77,39 +71,30 @@ export default class App extends Component {
     this.state = {
       $arrayByVariableNameByScenarioIdx: null,
       $isOpenedByVariableId: Immutable.Map(),
+      $parameterDataByName: Immutable.Map(),
       $simulationData: Immutable.fromJS(model.defaultSimulationData),
       $tracebacksByScenarioIdx: null,
       $variableDataByName: Immutable.Map(),
       $variableErrorMessageByName: Immutable.Map(),
       countryPackageGitHeadSha: null,
       isSimulationEditorValid: true,
-      isSimulationInProgress: false,
+      isCalculateInProgress: false,
+      nameFilter: null,
+      parametersFilePath: null,
       selectedScenarioIdx: 0,
       simulationErrorMessage: null,
+      // tracebacksLimit: null,
+      tracebacksLimit: 50,
     }
   }
-  fetchVariable = async (name, period, id = null) => {
-    const {$variableDataByName, $variableErrorMessageByName} = this.state
-    if (id === null) {
-      id = model.buildVariableId(name, period)
-    }
-    let data
-    try {
-      // TODO Allow api_url GET param
-      data = await webservices.fetchVariable(config.apiBaseUrl, name)
-    } catch (error) {
-      let errorMessage = error.data ? JSON.stringify(error.data, null, 2) : error.message
-      return {
-        $variableDataByName: $variableDataByName.set(name, null),
-        $variableErrorMessageByName: $variableErrorMessageByName.set(name, errorMessage),
-        countryPackageGitHeadSha: null,
-      }
-    }
-    return {
-      $variableDataByName: $variableDataByName.set(name, Immutable.fromJS(data.variables[0])),
-      $variableErrorMessageByName: $variableErrorMessageByName.set(name, null),
-      countryPackageGitHeadSha: data.country_package_git_head_sha,
-    }
+  handleNameFilterChange = (event) => {
+    const nameFilter = event.target.value
+    this.setState({nameFilter})
+  }
+  handleSearchFormSubmit = (event) => {
+    event.preventDefault()
+    const {nameFilter} = this.state
+    console.log(nameFilter)
   }
   handleSelectedScenarioIdxChange = (event) => {
     const selectedScenarioNumber = event.target.valueAsNumber
@@ -144,16 +129,54 @@ export default class App extends Component {
   }
   handleSimulationFormSubmit = (event) => {
     event.preventDefault()
-    // TODO Assert there is at least 1 defined scenario.
     this.calculate()
   }
   handleTracebackItemToggle = async ($traceback, id, isOpened) => {
-    const {$isOpenedByVariableId, $variableDataByName} = this.state
+    const {$isOpenedByVariableId, $parameterDataByName, $variableDataByName, $variableErrorMessageByName} = this.state
     const name = $traceback.get("name")
     let changeset = {$isOpenedByVariableId: $isOpenedByVariableId.set(id, isOpened)}
-    if (isOpened && !$variableDataByName.has(name)) {
-      const period = $traceback.get("period")
-      changeset = Object.assign(changeset, await this.fetchVariable(name, period, id))
+    let $variableData = $variableDataByName.get(name)
+    if (isOpened && !$variableData) {
+      let variableData
+      try {
+        // TODO Allow api_url GET param
+        variableData = await webservices.fetchVariable(config.apiBaseUrl, name)
+      } catch (error) {
+        let errorMessage = error.data ? JSON.stringify(error.data, null, 2) : error.message
+        changeset = {
+          ...changeset,
+          $variableDataByName: $variableDataByName.set(name, null),
+          $variableErrorMessageByName: $variableErrorMessageByName.set(name, errorMessage),
+          countryPackageGitHeadSha: null,
+        }
+        this.setState(changeset)
+        return
+      }
+      $variableData = Immutable.fromJS(variableData.variables[0])
+      changeset = {
+        ...changeset,
+        $variableDataByName: $variableDataByName.set(name, $variableData),
+        $variableErrorMessageByName: $variableErrorMessageByName.set(name, null),
+        countryPackageGitHeadSha: variableData.country_package_git_head_sha,
+      }
+    }
+    const $formula = $variableData && $variableData.get("formula")
+    const $parameterNames = $formula && $formula.get("parameters")
+    const parameterNames = $parameterNames && $parameterNames.toJS()
+    if (parameterNames) {
+      const parametersData = await webservices.fetchParameters(config.apiBaseUrl, parameterNames)
+      const $parametersData = Immutable.fromJS(parametersData)
+      const $parameters = $parametersData.get("parameters")
+      const parametersFilePath = $parametersData.get("parameters_file_path")
+      changeset = {
+        ...changeset,
+        $parameterDataByName: $parameterDataByName.merge(
+          $parameters
+            .groupBy(($parameter) => $parameter.get("name"))
+            .map(($parameters) => $parameters.first()),
+        ),
+        parametersFilePath,
+      }
     }
     this.setState(changeset)
   }
@@ -161,24 +184,24 @@ export default class App extends Component {
     const {
       $arrayByVariableNameByScenarioIdx,
       $isOpenedByVariableId,
+      $parameterDataByName,
       $simulationData,
       $tracebacksByScenarioIdx,
       $variableDataByName,
       $variableErrorMessageByName,
       countryPackageGitHeadSha,
+      isCalculateInProgress,
       isSimulationEditorValid,
-      isSimulationInProgress,
+      nameFilter,
       selectedScenarioIdx,
       simulationErrorMessage,
+      tracebacksLimit,
     } = this.state
     const $selectedScenarioArrayByVariableName = $arrayByVariableNameByScenarioIdx &&
       $arrayByVariableNameByScenarioIdx.get(selectedScenarioIdx)
     const $selectedScenarioTracebacks = $tracebacksByScenarioIdx && $tracebacksByScenarioIdx.get(selectedScenarioIdx)
-    const tracebacksLimit = null
-    // const tracebacksLimit = 50
     let $tracebacks = $selectedScenarioTracebacks
     if ($selectedScenarioTracebacks) {
-      // const tracebacksLimit = null
       if (tracebacksLimit) {
         $tracebacks = $selectedScenarioTracebacks.slice(0, tracebacksLimit)
       }
@@ -207,13 +230,13 @@ export default class App extends Component {
               onJsonError={this.handleSimulationEditorJsonError}
             />
             <button
-              accessKey="s"
+              accessKey="t"
               className="btn btn-primary"
-              disabled={isSimulationInProgress || !$simulationData || !isSimulationEditorValid}
+              disabled={isCalculateInProgress || !$simulationData || !isSimulationEditorValid}
               style={{marginTop: "1em"}}
               type="submit"
             >
-              {isSimulationInProgress ? "Simulation en cours…" : "Simuler"}
+              {isCalculateInProgress ? "Trace en cours…" : "Tracer"}
             </button>
             {
               nbScenarios > 1 && (
@@ -250,9 +273,14 @@ export default class App extends Component {
                       variables d'entrée ou calculées.`
                     }
                   </p>
+                  <form onSubmit={this.handleSearchFormSubmit}>
+                    <input onChange={this.handleNameFilterChange} type="text" value={nameFilter} />
+                    <input className="btn btn-default" type="submit" value="Chercher" />
+                  </form>
                   <TracebacksList
                     $arrayByVariableName={$selectedScenarioArrayByVariableName}
                     $isOpenedByVariableId={$isOpenedByVariableId}
+                    $parameterDataByName={$parameterDataByName}
                     $requestedVariableNames={$simulationData ? $simulationData.get("variables") : null}
                     $selectedScenarioData={
                       $simulationData && $simulationData.get("scenarios") ?

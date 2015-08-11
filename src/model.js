@@ -22,7 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-import webservices from "./webservices"
+import * as webservices from "./webservices"
 
 
 export const defaultSimulationData = {

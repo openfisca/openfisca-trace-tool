@@ -29,8 +29,6 @@ import Immutable from "immutable"
 // import VariableLink from "./variable-link"
 import {ImmutablePureComponent} from "../decorators"
 import * as model from "../model"
-import config from "../config"
-import ExternalLink from "./external-link"
 import Value from "./value"
 import Variable from "./variable"
 
@@ -40,6 +38,7 @@ export default class TracebackItem extends Component {
   static propTypes = {
     // TODO use immutable arrayOf(shape)
     $arrayByPeriodOrArray: PropTypes.any.isRequired,
+    $parameterDataByName: PropTypes.any.isRequired,
     $requestedVariableNames: PropTypes.any.isRequired,
     $selectedScenarioData: PropTypes.any.isRequired,
     $traceback: PropTypes.any.isRequired,
@@ -64,6 +63,7 @@ export default class TracebackItem extends Component {
   render() {
     const {
       $arrayByPeriodOrArray,
+      $parameterDataByName,
       $requestedVariableNames,
       $selectedScenarioData,
       $traceback,
@@ -110,13 +110,6 @@ export default class TracebackItem extends Component {
               {" "}
               {period || "(sans période)"}
             </a>
-            <ExternalLink
-              href={`${config.legislationExplorerBaseUrl}/variables/${name}`}
-              style={{marginLeft: "1em"}}
-              title="Ouvrir dans l'explorateur de variables"
-            >
-              ouvrir
-            </ExternalLink>
             {
               !isOpened && (
                 <div className="text-muted">
@@ -176,119 +169,17 @@ export default class TracebackItem extends Component {
               </div>
             ) : $variableData && countryPackageGitHeadSha ? (
               <Variable
+                $parameterDataByName={$parameterDataByName}
                 $requestedVariableNames={$requestedVariableNames}
+                $traceback={$traceback}
                 $tracebacks={$tracebacks}
                 $variableData={$variableData}
                 countryPackageGitHeadSha={countryPackageGitHeadSha}
               />
-          ) : null
+            ) : null
           }
         </div>
       </div>
     )
   }
-  // renderConsumers() {
-  //   return (
-  //     <div>
-  //       <h3>Variables appelantes</h3>
-  //       <ul className="computed-consumers">
-  //         {
-  //           this.props.consumerTracebacks.map((consumerTraceback, idx) => (
-  //             <li key={idx}>
-  //               <VariableLink
-  //                 name={consumerTraceback.name}
-  //                 onOpen={this.props.onOpen}
-  //                 period={consumerTraceback.period}>
-  //                 {consumerTraceback.name + " / " + consumerTraceback.period}
-  //               </VariableLink>
-  //               {` : ${consumerTraceback.label}`}
-  //             </li>
-  //           ))
-  //         }
-  //       </ul>
-  //     </div>
-  //   )
-  // }
-  // renderPanelBodyContent() {
-  //   return (
-  //     <div>
-  //       {
-  //         this.props.usedPeriods ? (
-  //           this.renderUsedPeriods()
-  //         ) : (
-  //           <div>
-  //             {
-  //               (this.props.hasAllDefaultArguments || !this.props.isComputed) && (
-  //                 <div>
-  //                   {
-  //                     this.props.hasAllDefaultArguments && (
-  //                       <span className="label label-default">Valeurs par défaut</span>
-  //                     )
-  //                   }
-  //                   {
-  //                     !this.props.isComputed && (
-  //                       <span className="label label-default">Variable d'entrée</span>
-  //                     )
-  //                   }
-  //                 </div>
-  //               )
-  //             }
-  //             {this.props.holder.formula && !this.props.usedPeriods &&
-  //                this.renderFormula(this.props.holder.formula)}
-  //           </div>
-  //         )
-  //       }
-  //       {this.props.consumerTracebacks && this.renderConsumers()}
-  //     </div>
-  //   )
-  // }
-  // renderUsedPeriods() {
-  //   return (
-  //     <div>
-  //       <h3>Valeurs extrapolées depuis</h3>
-  //       <table className="table">
-  //         <thead>
-  //           <tr>
-  //             <th>Nom</th>
-  //             <th>Période</th>
-  //             <th className="text-right">Valeur</th>
-  //           </tr>
-  //         </thead>
-  //         <tbody>
-  //           {
-  //             this.props.usedPeriods.map((period, idx) => (
-  //               <tr key={idx}>
-  //                 <td>
-  //                   <VariableLink name={this.props.name} onOpen={this.props.onOpen} period={period}>
-  //                     {this.props.name}
-  //                   </VariableLink>
-  //                 </td>
-  //                 <td>
-  //                   {period}
-  //                 </td>
-  //                 <td>
-  //                   <ul className="list-unstyled">
-  //                     {
-  //                       this.props.variableByName[this.props.name][period].map((value, valueIdx) => (
-  //                         <li className="text-right" key={valueIdx}>
-  //                           <samp>
-  //                             <Value
-  //                               isDefaultArgument={value === this.props.default}
-  //                               type={this.props.cellType}
-  //                               value={value}
-  //                             />
-  //                           </samp>
-  //                         </li>
-  //                       ))
-  //                     }
-  //                   </ul>
-  //                 </td>
-  //               </tr>
-  //             ))
-  //           }
-  //         </tbody>
-  //       </table>
-  //     </div>
-  //   )
-  // }
 }

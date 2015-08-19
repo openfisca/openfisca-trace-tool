@@ -28,9 +28,9 @@ import {addons} from "react/addons"
 const {Perf} = addons
 
 
-export async function measurePerf(cb) {
+export function measurePerf(cb) {
   Perf.start()
-  await cb()
+  cb()
   Perf.stop()
   console.group("perf")
   console.group("inclusive")

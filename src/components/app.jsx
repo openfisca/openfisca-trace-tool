@@ -83,8 +83,7 @@ export default class App extends Component {
       parametersFilePath: null,
       selectedScenarioIdx: 0,
       simulationErrorMessage: null,
-      // tracebacksLimit: null,
-      tracebacksLimit: 50,
+      tracebacksLimit: 100,
     }
   }
   handleNameFilterChange = (event) => {

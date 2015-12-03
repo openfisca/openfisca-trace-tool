@@ -9,7 +9,7 @@ const PORT = process.env.npm_package_config_port // Read from package.json
 
 new WebpackDevServer(webpack(config), {
   historyApiFallback: true,
-  hot: false,
+  hot: true,
   stats: {colors: true},
 }).listen(PORT, "localhost", function(err/*, result*/) {
   if (err) {

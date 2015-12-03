@@ -29,29 +29,31 @@ import * as model from "../model"
 
 export default class VariableLink extends Component {
   static propTypes = {
-    children: PropTypes.node.isRequired,
+    children: PropTypes.node,
+    label: PropTypes.string,
     name: PropTypes.string.isRequired,
-    // onOpen: PropTypes.func.isRequired,
+    onOpen: PropTypes.func.isRequired,
     period: PropTypes.string,
   }
   handleClick = (event) => {
-    console.log("TODO VariableLink.handleClick", event)
-    // event.preventDefault()
-    // this.props.onOpen(this.props.name, this.props.period)
-    // var $link = $(event.target.hash)
-    // if ($link.length) {
-    //   location.hash = event.target.hash
-    //   $(document.body).scrollTop($link.offset().top)
-    // } else {
-    //   console.error("This link has no target: " + event.target.hash)
-    // }
+    const {name, onOpen, period} = this.props
+    event.preventDefault()
+    onOpen(name, period)
   }
   render() {
-    const {children, name, period} = this.props
+    const {children, label, name, period} = this.props
     const id = model.buildVariableId(name, period)
     return (
       <a href={"#" + id} onClick={this.handleClick}>
-        {children}
+        {
+          children || (
+            <span>
+              {label ? <abbr title={label}>{name}</abbr> : name}
+              {" "}
+              ({period || "sans période"})
+            </span>
+          )
+        }
       </a>
     )
   }

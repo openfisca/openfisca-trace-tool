@@ -33,6 +33,7 @@ export default class FormulaSource extends Component {
     inputVariablesData: PropTypes.arrayOf(
       PropTypes.arrayOf(PropTypes.string),
     ),
+    onOpen: PropTypes.func.isRequired,
   }
   getSourceFragments = (source, inputVariablesData) => {
     return inputVariablesData.reduce((memo, inputVariableData) => {
@@ -65,6 +66,7 @@ export default class FormulaSource extends Component {
     return fragments
   }
   getSourceWithLinks = (source, inputVariablesData) => {
+    const {onOpen} = this.props
     const sourceFragments = inputVariablesData ?
       this.getSourceFragments(source, inputVariablesData) :
       [{source}]
@@ -74,7 +76,12 @@ export default class FormulaSource extends Component {
           sourceFragments.map((fragment, idx) => fragment.source ? (
             <span key={idx}>{fragment.source}</span>
           ) : fragment.inputVariable ? (
-            <VariableLink key={idx} name={fragment.inputVariable.name} period={fragment.inputVariable.period}>
+            <VariableLink
+              key={idx}
+              name={fragment.inputVariable.name}
+              onOpen={onOpen}
+              period={fragment.inputVariable.period}
+            >
               <span
                 aria-hidden="true"
                 className="glyphicon glyphicon-link"

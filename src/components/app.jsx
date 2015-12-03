@@ -160,8 +160,9 @@ export default class App extends Component {
       }
     }
     const $formula = $variableData && $variableData.get("formula")
-    const $parameterNames = $formula && $formula.get("parameters")
-    const parameterNames = $parameterNames && $parameterNames.toJS()
+    const period = $traceback.get("period")
+    const formula = $formula ? model.getActualFormula($formula.toJS(), period) : null
+    const parameterNames = formula && formula.parameters
     if (parameterNames) {
       const parametersData = await webservices.fetchParameters(config.apiBaseUrl, parameterNames)
       const $parametersData = Immutable.fromJS(parametersData)
@@ -178,6 +179,25 @@ export default class App extends Component {
       }
     }
     this.setState(changeset)
+  }
+  handleVariableOpen = (name, period) => {
+    const {$tracebacksByScenarioIdx, selectedScenarioIdx, tracebacksLimit} = this.state
+    const $tracebacks = $tracebacksByScenarioIdx && $tracebacksByScenarioIdx.get(selectedScenarioIdx)
+    const tracebackIndex = $tracebacks.findIndex(($traceback) => $traceback.get("name") === name &&
+      ($traceback.get("period") === null || $traceback.get("period") === period))
+    if (tracebackIndex < tracebacksLimit) {
+      const id = model.buildVariableId(name, period)
+      const element = document.getElementById(id)
+    }
+    // var $link = $(event.target.hash)
+    // if ($link.length) {
+    //   location.hash = event.target.hash
+    //   $(document.body).scrollTop($link.offset().top)
+    // } else {
+    //   console.error("This link has no target: " + event.target.hash)
+    // }
+
+    debugger
   }
   render() {
     const {
@@ -200,11 +220,6 @@ export default class App extends Component {
       $arrayByVariableNameByScenarioIdx.get(selectedScenarioIdx)
     const $selectedScenarioTracebacks = $tracebacksByScenarioIdx && $tracebacksByScenarioIdx.get(selectedScenarioIdx)
     let $tracebacks = $selectedScenarioTracebacks
-    if ($selectedScenarioTracebacks) {
-      if (tracebacksLimit) {
-        $tracebacks = $selectedScenarioTracebacks.slice(0, tracebacksLimit)
-      }
-    }
     const nbScenarios = $simulationData && $simulationData.get("scenarios") ?
       $simulationData.get("scenarios").size :
       0
@@ -290,10 +305,12 @@ export default class App extends Component {
                     $variableDataByName={$variableDataByName}
                     $variableErrorMessageByName={$variableErrorMessageByName}
                     countryPackageGitHeadSha={countryPackageGitHeadSha}
+                    onOpen={this.handleVariableOpen}
                     onToggle={this.handleTracebackItemToggle}
+                    tracebacksLimit={tracebacksLimit}
                   />
                   {
-                    tracebacksLimit && $tracebacks.size < $selectedScenarioTracebacks.size && (
+                    tracebacksLimit && $tracebacks.size > tracebacksLimit && (
                       <p>La liste a été tronquée, seuls les {tracebacksLimit} premiers éléments sont affichés.</p>
                     )
                   }

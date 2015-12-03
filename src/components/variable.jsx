@@ -24,7 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import {Component, PropTypes} from "react"
 import {FormattedDate, FormattedMessage} from "react-intl"
-
+import Immutable from "immutable"
 
 import {ImmutablePureComponent} from "../decorators"
 import * as model from "../model"
@@ -34,6 +34,7 @@ import FormulaSource from "./formula-source"
 import GitHubLink from "./github-link"
 import Highlight from "./highlight"
 import List from "./list"
+import ValuesArray from "./values-array"
 import VariableLink from "./variable-link"
 
 
@@ -41,37 +42,28 @@ import VariableLink from "./variable-link"
 export default class Variable extends Component {
   static propTypes = {
     // TODO use immutable arrayOf(shape)
+    $arrayByVariableName: PropTypes.any.isRequired,
     $parameterDataByName: PropTypes.any.isRequired,
     $requestedVariableNames: PropTypes.any.isRequired,
+    $testCase: PropTypes.any.isRequired,
     $traceback: PropTypes.any.isRequired,
     $tracebacks: PropTypes.any.isRequired,
     $variableData: PropTypes.any.isRequired,
     countryPackageGitHeadSha: PropTypes.string.isRequired,
+    onOpen: PropTypes.func.isRequired,
   }
-  // getParameterValue = (parameter, instant) => {
-  //   const type = parameter["@type"]
-  //   const isBetween = item => item.start <= instant && item.stop >= instant
-  //   if (type === "Parameter") {
-  //     return (parameter.values.find(isBetween) || parameter.values[0]).value
-  //   } else {
-  //     // type === "Scale"
-  //     return null
-  //   }
-  // }
   render() {
     const {$traceback, $variableData, countryPackageGitHeadSha} = this.props
     const $formula = $variableData.get("formula")
-    const formula = $formula && $formula.toJS()
     const label = $variableData.get("label")
     const module = $variableData.get("module")
     const name = $variableData.get("name")
     const line_number = $variableData.get("line_number")
+    const period = $traceback.get("period")
+    const formula = $formula ? model.getActualFormula($formula.toJS(), period) : null
     const formulaParameterNames = formula && formula.parameters
     const $tracebackInputVariablesData = $traceback.get("input_variables")
     const tracebackInputVariablesData = $tracebackInputVariablesData && $tracebackInputVariablesData.toJS()
-    if (formula && formula["@type"] === "DatedFormula") {
-      console.log("DatedFormula", name)
-    }
     return (
       <div>
         <p>
@@ -99,6 +91,7 @@ export default class Variable extends Component {
             Explorateur de variables
           </ExternalLink>
         </p>
+        <hr />
         {this.renderVariableDefinitionsList()}
         {tracebackInputVariablesData && <hr />}
         {tracebackInputVariablesData && this.renderInputVariables(tracebackInputVariablesData)}
@@ -110,7 +103,7 @@ export default class Variable extends Component {
     )
   }
   renderConsumerVariables = () => {
-    const {$requestedVariableNames, $tracebacks, $variableData} = this.props
+    const {$requestedVariableNames, $tracebacks, $variableData, onOpen} = this.props
     const label = $variableData.get("label")
     const name = $variableData.get("name")
     const period = $variableData.get("period")
@@ -130,11 +123,12 @@ export default class Variable extends Component {
                   const consumerName = $consumerTraceback.get("name")
                   const consumerPeriod = $consumerTraceback.get("period")
                   return (
-                    <VariableLink name={consumerName} period={consumerPeriod}>
-                      <abbr title={consumerLabel}>{consumerName}</abbr>
-                      {" "}
-                      {consumerPeriod || "(sans période)"}
-                    </VariableLink>
+                    <VariableLink
+                      label={consumerLabel}
+                      name={consumerName}
+                      onOpen={onOpen}
+                      period={consumerPeriod}
+                    />
                   )
                 }
               }
@@ -161,16 +155,22 @@ export default class Variable extends Component {
     ]
   }
   renderFormula = (formula) => {
-    const {$traceback} = this.props
+    const {$traceback, onOpen} = this.props
     const {line_number, module, source} = formula
     const $tracebackInputVariablesData = $traceback.get("input_variables")
     const tracebackInputVariablesData = $tracebackInputVariablesData && $tracebackInputVariablesData.toJS()
     return (
       <div>
-        <h4>Formule de calcul</h4>
+        <h4>
+          {
+            formula.datedFormulaData ?
+              this.renderFormulaHeading(formula.datedFormulaData) :
+              "Formule de calcul"
+          }
+        </h4>
         <div style={{position: "relative"}}>
           <Highlight language="python">
-            <FormulaSource inputVariablesData={tracebackInputVariablesData}>
+            <FormulaSource inputVariablesData={tracebackInputVariablesData} onOpen={onOpen}>
               {source}
             </FormulaSource>
           </Highlight>
@@ -191,13 +191,83 @@ export default class Variable extends Component {
       </div>
     )
   }
+  renderFormulaHeading = ({startInstant, stopInstant}) => {
+    let heading
+    if (startInstant && stopInstant) {
+      heading = (
+        <FormattedMessage
+          message="Formule de calcul du {start} au {stop}"
+          start={<FormattedDate format="short" value={startInstant} />}
+          stop={<FormattedDate format="short" value={stopInstant} />}
+        />
+      )
+    } else if (startInstant) {
+      heading = (
+        <FormattedMessage
+          message="Formule de calcul depuis le {start}"
+          start={<FormattedDate format="short" value={startInstant} />}
+        />
+      )
+    } else if (stopInstant) {
+      heading = (
+        <FormattedMessage
+          message="Formule de calcul jusqu'au {stop}"
+          stop={<FormattedDate format="short" value={stopInstant} />}
+        />
+      )
+    }
+    return heading
+  }
   renderInputVariables = (tracebackInputVariablesData) => {
+    const {$arrayByVariableName, $testCase, $traceback, $tracebacks, onOpen} = this.props
+    const cellType = $traceback.get("cell_type")
+    const entitySymbol = $traceback.get("entity")
+    const entityKeyPlural = model.entitySymbolToKeyPlural(entitySymbol)
+    const $entities = $testCase.get(entityKeyPlural)
     return (
       <div>
         <h4>Variables d'entrée</h4>
-        <List items={tracebackInputVariablesData} type="inline">
-          {([name, period]) => <VariableLink name={name} period={period}>{name}</VariableLink>}
-        </List>
+          <table className="table table-striped">
+          <thead>
+            <tr>
+              <th>Variable</th>
+              <th className="text-right">Valeur</th>
+            </tr>
+          </thead>
+          <tbody>
+            {
+              tracebackInputVariablesData.map(([name, period], idx) => {
+                const inputVariableTraceback = model.findTraceback($tracebacks, name, period)
+                const label = inputVariableTraceback && inputVariableTraceback.label
+                const $arrayByPeriodOrArray = $arrayByVariableName.get(name)
+                const $array = Immutable.List.isList($arrayByPeriodOrArray) ?
+                  $arrayByPeriodOrArray :
+                  $arrayByPeriodOrArray.get(period)
+                return (
+                  <tr key={idx}>
+                    <td>
+                      <VariableLink
+                        label={label}
+                        name={name}
+                        onOpen={onOpen}
+                        period={period}
+                      />
+                    </td>
+                    <td className="text-right">
+                      <ValuesArray
+                        $array={$array}
+                        $entities={$entities}
+                        cellType={cellType}
+                        entityKeyPlural={entityKeyPlural}
+                      />
+                      <div className="text-muted">{entityKeyPlural}</div>
+                    </td>
+                  </tr>
+                )
+              })
+            }
+          </tbody>
+        </table>
       </div>
     )
   }
@@ -211,21 +281,14 @@ export default class Variable extends Component {
             (name) => {
               const $parameter = $parameterDataByName.get(name)
               const parameter = $parameter && $parameter.toJS()
-              return parameter ? (
-                <span>
-                  <ExternalLink
-                    href={`${config.legislationExplorerBaseUrl}/parameters/${name}`}
-                    title={parameter.description}
-                  >
-                    {name}
-                  </ExternalLink>
-                </span>
-              ) : (
-                <span>
+              const description = parameter && parameter.description
+              return (
+                <ExternalLink
+                  href={`${config.legislationExplorerBaseUrl}/parameters/${name}`}
+                  title={description}
+                >
                   {name}
-                  {" "}
-                  <span className="label label-warning">inexistant</span>
-                </span>
+                </ExternalLink>
               )
             }
           }
@@ -233,27 +296,10 @@ export default class Variable extends Component {
       </div>
     )
   }
-  // renderParameterValue = (parameter) => {
-  //   const {$traceback} = this.props
-  //   const period = $traceback.get("period")
-  //   debugger
-  //   return (
-  //     <samp>
-  //       {this.getParameterValue(parameter, "TODO")}
-  //     </samp>
-  //   )
-  // }
   renderVariableDefinitionsList = () => {
     const {countryPackageGitHeadSha, $variableData} = this.props
-    const entityLabelByNamePlural = {
-      familles: "Familles",
-      foyers_fiscaux: "Foyers fiscaux",
-      individus: "Individus",
-      menages: "Ménages",
-    }
     const cerfa_field = $variableData.get("cerfa_field")
     const defaultValue = $variableData.get("default")
-    const entity = $variableData.get("entity")
     const line_number = $variableData.get("line_number")
     const module = $variableData.get("module")
     const start = $variableData.get("start")
@@ -262,8 +308,6 @@ export default class Variable extends Component {
     const val_type = $variableData.get("val_type")
     return (
       <dl className="dl-horizontal">
-        <dt>Entité</dt>
-        <dd>{entityLabelByNamePlural[entity]}</dd>
         <dt>Type</dt>
         <dd>
           <code>{type}</code>
@@ -323,7 +367,7 @@ export default class Variable extends Component {
         <dd>
           {
             () => {
-              var sourceCodeText = module
+              let sourceCodeText = module
               if (line_number) {
                 sourceCodeText += ` ligne ${line_number}`
               }

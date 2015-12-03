@@ -29,7 +29,7 @@ import Immutable from "immutable"
 // import VariableLink from "./variable-link"
 import {ImmutablePureComponent} from "../decorators"
 import * as model from "../model"
-import Value from "./value"
+import ValuesArray from "./values-array"
 import Variable from "./variable"
 
 
@@ -37,7 +37,7 @@ import Variable from "./variable"
 export default class TracebackItem extends Component {
   static propTypes = {
     // TODO use immutable arrayOf(shape)
-    $arrayByPeriodOrArray: PropTypes.any.isRequired,
+    $arrayByVariableName: PropTypes.any.isRequired,
     $parameterDataByName: PropTypes.any.isRequired,
     $requestedVariableNames: PropTypes.any.isRequired,
     $selectedScenarioData: PropTypes.any.isRequired,
@@ -48,6 +48,7 @@ export default class TracebackItem extends Component {
     errorMessage: PropTypes.string,
     id: PropTypes.string.isRequired,
     isOpened: PropTypes.bool,
+    onOpen: PropTypes.func.isRequired,
     onToggle: PropTypes.func.isRequired,
   }
   handleRetryClick = (event) => {
@@ -62,7 +63,7 @@ export default class TracebackItem extends Component {
   }
   render() {
     const {
-      $arrayByPeriodOrArray,
+      $arrayByVariableName,
       $parameterDataByName,
       $requestedVariableNames,
       $selectedScenarioData,
@@ -73,6 +74,7 @@ export default class TracebackItem extends Component {
       errorMessage,
       id,
       isOpened,
+      onOpen,
     } = this.props
     function truncate(str, length) {
       const truncated = str.slice(0, length)
@@ -87,11 +89,12 @@ export default class TracebackItem extends Component {
     const entityKeyPlural = model.entitySymbolToKeyPlural(entitySymbol)
     const $testCase = $selectedScenarioData.get("test_case")
     const $entities = $testCase.get(entityKeyPlural)
+    const $arrayByPeriodOrArray = $arrayByVariableName.get(name)
     const $array = Immutable.List.isList($arrayByPeriodOrArray) ?
       $arrayByPeriodOrArray :
       $arrayByPeriodOrArray.get(period)
     return (
-      <div className="panel panel-default" id={id}>
+      <div className="panel panel-default" id={id} ref={id}>
         <div className="clearfix panel-heading">
           <div className="pull-left">
             <a
@@ -108,7 +111,7 @@ export default class TracebackItem extends Component {
               {" "}
               {name}
               {" "}
-              {period || "(sans période)"}
+              ({period || "sans période"})
             </a>
             {
               !isOpened && (
@@ -126,32 +129,12 @@ export default class TracebackItem extends Component {
             }
           </div>
           <div className="pull-right text-right">
-            <samp className="text-muted" style={{display: "inline-block", marginRight: "0.5em"}}>[</samp>
-            <ul className="list-inline" style={{display: "inline-block"}}>
-              {
-                $array.map((value, idx) => (
-                  <li key={idx}>
-                    <samp>
-                      <Value
-                        title={() => {
-                          let title = `${entityKeyPlural}[${idx}]`
-                          const entityId = $entities.getIn([idx, "id"])
-                          if (entityId) {
-                            title += `, id=${entityId}`
-                          }
-                          return title
-                        }()}
-                        type={cellType}
-                      >
-                        {value}
-                      </Value>
-                    </samp>
-                    {idx < $array.size - 1 && <span className="text-muted">, </span>}
-                  </li>
-                ))
-              }
-            </ul>
-            <samp className="text-muted" style={{display: "inline-block"}}>]</samp>
+            <ValuesArray
+              $array={$array}
+              $entities={$entities}
+              cellType={cellType}
+              entityKeyPlural={entityKeyPlural}
+            />
             <div className="text-muted">{entityKeyPlural}</div>
           </div>
         </div>
@@ -169,12 +152,15 @@ export default class TracebackItem extends Component {
               </div>
             ) : $variableData && countryPackageGitHeadSha ? (
               <Variable
+                $arrayByVariableName={$arrayByVariableName}
                 $parameterDataByName={$parameterDataByName}
                 $requestedVariableNames={$requestedVariableNames}
+                $testCase={$testCase}
                 $traceback={$traceback}
                 $tracebacks={$tracebacks}
                 $variableData={$variableData}
                 countryPackageGitHeadSha={countryPackageGitHeadSha}
+                onOpen={onOpen}
               />
             ) : null
           }

@@ -42,7 +42,9 @@ export default class TracebacksList extends Component {
     $variableDataByName: PropTypes.any.isRequired,
     $variableErrorMessageByName: PropTypes.any.isRequired,
     countryPackageGitHeadSha: PropTypes.string,
+    onOpen: PropTypes.func.isRequired,
     onToggle: PropTypes.func.isRequired,
+    tracebacksLimit: PropTypes.number,
   }
   render() {
     const {
@@ -55,22 +57,24 @@ export default class TracebacksList extends Component {
       $variableDataByName,
       $variableErrorMessageByName,
       countryPackageGitHeadSha,
+      onOpen,
       onToggle,
+      tracebacksLimit,
     } = this.props
+    const $displayedTracebacks = tracebacksLimit ? $tracebacks.slice(0, tracebacksLimit) : $tracebacks
     return (
       <ul className="list-unstyled">
         {
-          $tracebacks.map(($traceback, idx) => {
+          $displayedTracebacks.map(($traceback, idx) => {
             const name = $traceback.get("name")
             const period = $traceback.get("period")
-            const $arrayByPeriodOrArray = $arrayByVariableName.get(name)
             const id = model.buildVariableId(name, period)
             const $variableData = $variableDataByName.get(name)
             const errorMessage = $variableErrorMessageByName.get(name)
             return (
               <li key={idx}>
                 <TracebackItem
-                  $arrayByPeriodOrArray={$arrayByPeriodOrArray}
+                  $arrayByVariableName={$arrayByVariableName}
                   $parameterDataByName={$parameterDataByName}
                   $requestedVariableNames={$requestedVariableNames}
                   $selectedScenarioData={$selectedScenarioData}
@@ -81,6 +85,7 @@ export default class TracebacksList extends Component {
                   errorMessage={errorMessage}
                   id={id}
                   isOpened={$isOpenedByVariableId.get(id) || false}
+                  onOpen={onOpen}
                   onToggle={onToggle}
                 />
               </li>

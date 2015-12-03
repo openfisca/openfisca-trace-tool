@@ -102,31 +102,36 @@ export function findConsumerTracebacks($tracebacks, name, period = null) {
 }
 
 
-// function findTraceback(tracebacks, name, period) {
-//   // Find variable traceback at the given name and period.
-//   // Assumes that a traceback exists only once for a given name and period, in the tracebacks list.
-//   return tracebacks.find((traceback) => traceback.name === name &&
-//     (traceback.period === null || traceback.period === period))
-// }
-//
-//
-// function findTracebacks(tracebacks, name, period) {  // jshint ignore:line
-//   // Find variable traceback at the given name and period.
-//   // Assumes that a traceback exists only once for a given name and period, in the tracebacks list.
-//   return tracebacks.filter((traceback) => {
-//     return traceback.name === name && (period === null || traceback.period === null || traceback.period === period)
-//   })
-// }
+export function findTraceback($tracebacks, name, period) {
+  // Find variable traceback at the given name and period.
+  // Assumes that a traceback exists only once for a given name and period, in the tracebacks list.
+  const traceback = $tracebacks.find(($traceback) => $traceback.get("name") === name &&
+    ($traceback.get("period") === null || $traceback.get("period") === period))
+  if (process.env.NODE_ENV === "development" && !traceback) {
+    console.error(`traceback not found for name: ${name} and period: ${period}`)
+  }
+  return traceback ? traceback.toJS() : null
+}
 
 
-// function normalizePeriod(period) {
-//   var dashMatches = period.match(/-/g)
-//   if (dashMatches) {
-//     var dashesCount = dashMatches.length
-//     var monthPrefix = "month:"
-//     if (dashesCount === 1 && period.startsWith(monthPrefix)) {
-//       return period.slice(monthPrefix.length)
-//     }
-//   }
-//   return period
-// }
+export function getActualFormula(formula, period) {
+  // A formula an be a DatedFormula which is a composition of SimpleFormula.s
+  // This function returns the SimpleFormula actually used by the computation, given the period and
+  // start/stop instants.
+  if (formula["@type"] === "DatedFormula") {
+    const formulaAtPeriod = formula.dated_formulas.find((datedFormula) => {
+      const startInstant = datedFormula.start_instant.slice(0, period.length)
+      const stopInstant = datedFormula.stop_instant.slice(0, period.length)
+      return startInstant <= period && period <= stopInstant
+    })
+    return {
+      datedFormulaData: {
+        startInstant: formulaAtPeriod.start_instant,
+        stopInstant: formulaAtPeriod.stop_instant,
+      },
+      ...formulaAtPeriod.formula,
+    }
+  } else {
+    return formula
+  }
+}
